@@ -49,7 +49,18 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:700;margin:8px
 #turnKeys .sideKey{font-size:29px;font-weight:900}
 #turnKeys .sideKey.long{font-size:18px}
 #gradeKeys{display:grid;gap:4px}
-#annotationKeys{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+#annotationKeys{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px}
+#annotationKeys button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;line-height:1.05;overflow:hidden}
+#annotationKeys .sym{font-size:1.3em;font-weight:900;white-space:nowrap}
+#annotationKeys small{font-size:.66em;font-weight:600;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+svg.sy{height:1em;width:auto;vertical-align:-.13em;overflow:visible}
+#annotationKeys .sym svg.sy{height:1.35em}
+.annRow{display:grid;grid-template-columns:44px 70px 1fr auto auto auto;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid #334155}
+.annRow .prev{font-size:24px;font-weight:900;text-align:center;background:#0f1a2b;border-radius:8px;padding:4px}
+.annRow button{padding:8px 11px;font-size:15px}
+.annRow .del{background:#7f1d1d}
+.annRow .handle{font-size:24px;text-align:center;color:var(--muted);cursor:grab;touch-action:none;padding:8px 0;user-select:none}
+.annRow.dragging{background:#1d3350;outline:2px solid var(--accent);border-radius:8px}
 #annotationKeys button{min-height:43px;padding:5px 3px;font-size:14px;border-radius:8px}
 #annotationKeys #newAnnotation{background:var(--accent);color:#111827}
 #noteText{padding:8px;font-size:14px}
@@ -267,10 +278,13 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
   </div>
  </div>
  <div class="panel">
-  <h2>Annotations communes à tous les pilotes</h2>
-  <p class="hint">Les annotations de base (À fond, Corde, Sale, Saut…) sont toujours présentes. Tes annotations perso s'ajoutent pour tous les pilotes :</p>
+  <h2>Annotations (communes à tous les pilotes)</h2>
+  <p class="hint">Fais glisser ☰ pour placer les boutons dans l'ordre que tu veux (ou ▲ ▼). ✕ pour supprimer.</p>
   <div id="annList" style="margin-top:6px"></div>
-  <div class="row" style="margin-top:6px"><input id="annInput" placeholder="Nouvelle annotation (ex. frein, piège)"><button id="annAdd" style="flex:.45">Ajouter</button></div>
+  <label for="annName">Nouvelle annotation : nom du bouton</label><input id="annName" placeholder="ex. Piège">
+  <label for="annValue">Ce qui s'écrit dans la note</label>
+  <div class="row"><input id="annValue" placeholder="ex. PIÈGE"><select id="annSym" style="flex:.8"></select></div>
+  <div class="btnGrid"><button class="primary" id="annAdd">Ajouter l'annotation</button><button id="annReset">Rétablir la liste de base</button></div>
  </div>
  <div class="panel">
   <h2>Sauvegarde</h2>
@@ -302,7 +316,24 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
 <script>
 const $=id=>document.getElementById(id);
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const BASE_ANN=[['À FOND','À fond'],['/','/ Sur'],['→','→ Pour'],['ET','Et'],['^','^ Sommet'],['CORDE','Corde'],['PAS CORDE','Pas corde'],['SALE','Sale'],['SAUT','Saut'],['FERME','Ferme'],['OUVRE','Ouvre'],['ATTENTION','Attention'],['+','+'],['COMMENTAIRE','Commentaire']];
+/* Symboles dessinés (comme dans le carnet). Dans une note, ils s'écrivent ⟦nom⟧. */
+const SYM={
+ carrefour:['Carrefour','<path d="M12 22V3M7 8l5-5 5 5M6 15h12"/>'],
+ poteau:['Poteau','<path d="M12 22V2M7 7h10"/>'],
+ attention:['Attention','<path d="M12 3 22.5 21H1.5Z"/><path d="M12 9.5v5.5"/><circle cx="12" cy="18" r=".7" fill="currentColor"/>'],
+ maison:['Maison','<path d="M6 21V10l6-7 6 7v11Z"/><path d="M6 10h12"/>'],
+ glisse:['Glisse','<text x="5" y="14" font-size="14" font-weight="900" font-family="system-ui,Arial" fill="currentColor" stroke="none">G</text><path d="M3 18.5q2.5-2 5 0t5 0 5 0 5 0M3 22.5q2.5-2 5 0t5 0 5 0 5 0"/>'],
+ ouvre:['Ouvre','<path d="M21 3 4 12l17 9"/>'],
+ ferme:['Ferme','<path d="M3 3l17 9-17 9"/>'],
+ pascorde:['Pas corde','<path d="M18.5 6.5A8 8 0 1 0 18.5 17.5"/><path d="M6 3l14 19"/>'],
+ sommet:['Sommet','<path d="M6 3h12M5 22 12 3l7 19"/>'],
+ cuvette:['Cuvette','<path d="M5 2l7 16 7-16M5 22h14"/>']
+};
+const symSvg=k=>`<svg class="sy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-label="${SYM[k][0]}">${SYM[k][1]}</svg>`;
+const rt=t=>esc(t).replace(/⟦(\w+)⟧/g,(m,k)=>SYM[k]?symSvg(k):m);          /* texte → affichage avec symboles */
+const plain=t=>String(t).replace(/⟦(\w+)⟧/g,(m,k)=>SYM[k]?'['+SYM[k][0]+']':m); /* texte → partage */
+const DEFAULT_ANN=[['Y','Y'],['Carrefour','⟦carrefour⟧'],['Poteau','⟦poteau⟧'],['Arrière','AR'],['Attention','⟦attention⟧'],['Et','et'],['Maison','⟦maison⟧'],['Étroit','//'],['Chicane','Chicane'],['Tenir','Tenir'],['T','T'],['Glisse','⟦glisse⟧'],['Départ','Départ'],['Fly Finish','F.Finish'],['Ouvre','⟦ouvre⟧'],['Ferme','⟦ferme⟧'],
+ ['Quitter','Qit'],['À fond','AFD'],['Pour','↳'],['Sur','/'],['Frein','FR'],['En frein','En FR'],['Fini frein','F.FR'],['Corde','C'],['Pas corde','⟦pascorde⟧'],['Sommet','⟦sommet⟧'],['Cuvette','⟦cuvette⟧'],['Pas extérieur','P.ext.'],['Tard','Tard.'],['Bref','Bref.'],['Jet','Jet']].map(([l,v])=>({l,v}));
 const DEF={leftLabel:'G',rightLabel:'D',format:'G4',grades:['1','2','3','4','5','6'],distances:['30 m','50 m','80 m','100 m','150 m','200 m','300 m','500 m']};
 const clone=o=>JSON.parse(JSON.stringify(o));
 function load(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}}
@@ -324,7 +355,11 @@ if(!data||!Array.isArray(data.profiles)||!data.profiles.length){
  p.stages[0].prevSplit=Number(localStorage.getItem('rn_previous_split')||0);
  data={profiles:[p],curProfile:0,annotations:load('rn_custom_annotations',[])};
 }
-if(!Array.isArray(data.annotations))data.annotations=[];
+if(!Array.isArray(data.annList)){ /* nouvelle liste d'annotations (+ reprise des annotations perso existantes) */
+ data.annList=clone(DEFAULT_ANN);
+ (Array.isArray(data.annotations)?data.annotations:[]).forEach(a=>{if(typeof a==='string'&&!data.annList.some(x=>x.v.toLowerCase()===a.toLowerCase()))data.annList.push({l:a,v:a})});
+}
+delete data.annotations;
 const P=()=>data.profiles[data.curProfile];
 const S=()=>P().stages[P().cur];
 function fix(){
@@ -349,20 +384,19 @@ function renderKeys(){
  $('distanceKeys').innerHTML=p.distances.map(d=>`<button type="button" data-distance="${esc(d)}">${esc(d)}</button>`).join('');
  $('distanceKeys').style.gridTemplateColumns=`repeat(${Math.max(1,Math.min(p.distances.length,8))},minmax(0,1fr))`;
  $('gradeKeys').innerHTML=p.grades.map(g=>`<button type="button" data-grade="${esc(g)}">${esc(g)}</button>`).join('');
- $('gradeKeys').style.gridTemplateColumns=`repeat(${Math.max(1,Math.min(p.grades.length,6))},minmax(0,1fr))`;
+ $('gradeKeys').style.gridTemplateColumns=`repeat(${Math.max(1,Math.min(p.grades.length,8))},minmax(0,1fr))`;
  $('leftSelect').textContent=p.leftLabel;$('rightSelect').textContent=p.rightLabel;
  $('leftSelect').classList.toggle('long',p.leftLabel.length>2);$('rightSelect').classList.toggle('long',p.rightLabel.length>2);
- $('annotationKeys').innerHTML=BASE_ANN.map(([v,l])=>`<button type="button" data-ann="${esc(v)}">${esc(l)}</button>`).join('')
-  +data.annotations.map(a=>`<button type="button" data-ann="${esc(a)}">${esc(a)}</button>`).join('')
+ $('annotationKeys').innerHTML=data.annList.map((a,i)=>`<button type="button" data-ann-i="${i}" aria-label="${esc(a.l)}"><span class="sym">${rt(a.v)}</span>${a.l.toLowerCase()!==a.v.toLowerCase()?'<small>'+esc(a.l)+'</small>':''}</button>`).join('')
   +'<button type="button" id="newAnnotation">＋ Perso</button>';
  chooseSide(selectedSide);
 }
 function renderNotes(){
  const s=S(),n=s.notes;
  const recent=n.slice(-12),box=$('recentNotes');
- box.innerHTML=recent.length?recent.map(x=>`<div>${esc(x.text)} ${inkSvg(x.ink)}</div>`).join(''):'<div class="muted" style="border:0">Les dernières notes apparaîtront ici.</div>';
+ box.innerHTML=recent.length?recent.map(x=>`<div>${rt(x.text)} ${inkSvg(x.ink)}</div>`).join(''):'<div class="muted" style="border:0">Les dernières notes apparaîtront ici.</div>';
  fitRecent();
- $('readList').innerHTML=n.map((x,i)=>`<div class="note${i===s.pos?' current':''}" data-goto="${i}"><span class="ntxt"><span>${esc(x.text)}</span>${inkSvg(x.ink)}${x.mark?'<span class="flag">⚑ '+esc(x.mark)+'</span>':''}</span><span style="display:flex;gap:6px;align-items:center;flex-shrink:0"><small>${i+1}</small><button type="button" class="edit" data-edit-note="${i}" aria-label="Modifier la note ${i+1}">✎</button></span></div>`).join('')+(n.length?'<div class="spacer"></div>':'<p class="muted" style="padding:10px">Aucune note pour cette spéciale. Prends-les dans l\'onglet Reconnaissance.</p>');
+ $('readList').innerHTML=n.map((x,i)=>`<div class="note${i===s.pos?' current':''}" data-goto="${i}"><span class="ntxt"><span>${rt(x.text)}</span>${inkSvg(x.ink)}${x.mark?'<span class="flag">⚑ '+esc(x.mark)+'</span>':''}</span><span style="display:flex;gap:6px;align-items:center;flex-shrink:0"><small>${i+1}</small><button type="button" class="edit" data-edit-note="${i}" aria-label="Modifier la note ${i+1}">✎</button></span></div>`).join('')+(n.length?'<div class="spacer"></div>':'<p class="muted" style="padding:10px">Aucune note pour cette spéciale. Prends-les dans l\'onglet Reconnaissance.</p>');
  renderReader();
 }
 /* Affiche autant de dernières notes que la place le permet (sans ligne coupée) */
@@ -406,7 +440,7 @@ function renderProfileForm(){
  $('pName').value=p.name;$('pLeft').value=p.leftLabel;$('pRight').value=p.rightLabel;$('pFormat').value=p.format;
  $('pGrades').value=p.grades.join(', ');$('pDist').value=p.distances.join(', ');
  $('stageInfo').textContent=`${p.name} a ${p.stages.length} spéciale(s). Spéciale affichée : ${S().name} (${S().notes.length} notes).`;
- $('annList').innerHTML=data.annotations.length?data.annotations.map((a,i)=>`<span class="annItem">${esc(a)}<button type="button" data-del-ann="${i}" aria-label="Supprimer">✕</button></span>`).join(''):'<span class="muted">Aucune annotation perso pour l\'instant.</span>';
+ $('annList').innerHTML=data.annList.map((a,i)=>`<div class="annRow" data-row="${i}"><span class="handle" aria-label="Déplacer">☰</span><span class="prev">${rt(a.v)}</span><span>${esc(a.l)}</span><button type="button" data-ann-up="${i}" aria-label="Monter">▲</button><button type="button" data-ann-down="${i}" aria-label="Descendre">▼</button><button type="button" class="del" data-del-ann="${i}" aria-label="Supprimer">✕</button></div>`).join('')||'<p class="muted">Aucune annotation.</p>';
 }
 function renderAll(){fix();renderSelects();renderKeys();renderNotes();renderProfileForm();updateSplitInfo()}
 
@@ -415,7 +449,7 @@ let draftParts=[],selectedSide='G';
 let draftInk=null;
 function renderDraft(){
  const t=draftParts.join(' · ');
- $('draft').innerHTML=(t||draftInk)?`<span>${esc(t)}</span>${inkSvg(draftInk)}`:'<span class="muted">Ta note apparaîtra ici…</span>';
+ $('draft').innerHTML=(t||draftInk)?`<span>${rt(t)}</span>${inkSvg(draftInk)}`:'<span class="muted">Ta note apparaîtra ici…</span>';
 }
 function addDraftPart(v){draftParts.push(v);renderDraft()}
 function chooseSide(side){selectedSide=side;$('leftSelect').classList.toggle('primary',side==='G');$('rightSelect').classList.toggle('primary',side==='D')}
@@ -433,11 +467,10 @@ $('saveDraft').onclick=()=>{
  draftParts=[];draftInk=null;$('noteText').value='';renderDraft();persist();renderNotes();renderProfileForm();
 };
 $('noteText').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('saveDraft').click()}});
-function addAnnotation(v){
- const label=(v||'').trim();if(!label)return false;
- const all=[...BASE_ANN.map(a=>a[0]),...data.annotations].map(x=>x.toLowerCase());
- if(all.includes(label.toLowerCase()))return false;
- data.annotations.push(label);persist();renderKeys();renderProfileForm();return true;
+function addAnnotation(label,value){
+ label=(label||'').trim();value=(value||label).trim();if(!label||!value)return false;
+ if(data.annList.some(x=>x.v.toLowerCase()===value.toLowerCase()&&x.l.toLowerCase()===label.toLowerCase()))return false;
+ data.annList.push({l:label,v:value});persist();renderKeys();renderProfileForm();return true;
 }
 function editNote(i){
  const s=S(),note=s.notes[i];if(!note)return;
@@ -516,8 +549,8 @@ document.addEventListener('click',e=>{
  let b;
  if(b=e.target.closest('[data-distance]'))return addDraftPart(b.dataset.distance);
  if(b=e.target.closest('[data-grade]'))return addDraftPart(turnLabel(selectedSide,b.dataset.grade));
- if(b=e.target.closest('[data-ann]'))return addDraftPart(b.dataset.ann);
- if(e.target.closest('#newAnnotation')){const v=prompt('Nouvelle annotation (pour tous les pilotes) :');if(v&&!addAnnotation(v))alert('Cette annotation existe déjà.');return}
+ if(b=e.target.closest('[data-ann-i]')){const a=data.annList[Number(b.dataset.annI)];if(a)addDraftPart(a.v);return}
+ if(e.target.closest('#newAnnotation')){const v=prompt('Nouvelle annotation (pour tous les pilotes) :');if(v&&!addAnnotation(v,v))alert('Cette annotation existe déjà.');return}
  if(b=e.target.closest('[data-edit-note]'))return editNote(Number(b.dataset.editNote));
  if(b=e.target.closest('[data-goto]')){S().pos=Number(b.dataset.goto);persist();renderReader(true);return}
  if(b=e.target.closest('[data-mark]')){
@@ -525,7 +558,8 @@ document.addEventListener('click',e=>{
   if(!note)return alert('Aucune note en cours.');
   note.mark=b.dataset.mark;persist();renderNotes();return;
  }
- if(b=e.target.closest('[data-del-ann]')){const i=Number(b.dataset.delAnn);if(confirm('Supprimer l\'annotation « '+data.annotations[i]+' » ?')){data.annotations.splice(i,1);persist();renderKeys();renderProfileForm()}return}
+ if(b=e.target.closest('[data-del-ann]')){const i=Number(b.dataset.delAnn);if(confirm('Supprimer l\'annotation « '+data.annList[i].l+' » ?')){data.annList.splice(i,1);persist();renderKeys();renderProfileForm()}return}
+ if(b=e.target.closest('[data-ann-up],[data-ann-down]')){const i=Number(b.dataset.annUp??b.dataset.annDown),j=b.dataset.annUp!=null?i-1:i+1;if(j<0||j>=data.annList.length)return;[data.annList[i],data.annList[j]]=[data.annList[j],data.annList[i]];persist();renderKeys();renderProfileForm();return}
 });
 
 /* ---- Onglets ---- */
@@ -596,7 +630,30 @@ $('clearNotes').onclick=()=>{if(confirm('Vider toutes les notes de « '+S().name
 $('delStage').onclick=()=>{if(!confirm('Supprimer la spéciale « '+S().name+' » et ses notes ?'))return;P().stages.splice(P().cur,1);P().cur=0;persist();renderAll()};
 
 /* ---- Annotations communes ---- */
-$('annAdd').onclick=()=>{if(addAnnotation($('annInput').value))$('annInput').value='';else if($('annInput').value.trim())alert('Cette annotation existe déjà.')};
+$('annSym').innerHTML='<option value="">ou un symbole dessiné…</option>'+Object.keys(SYM).map(k=>`<option value="${k}">${SYM[k][0]}</option>`).join('');
+$('annSym').onchange=e=>{const k=e.target.value;if(k){$('annValue').value='⟦'+k+'⟧';if(!$('annName').value.trim())$('annName').value=SYM[k][0]}};
+$('annAdd').onclick=()=>{
+ const l=$('annName').value.trim(),v=$('annValue').value.trim()||l;
+ if(!l)return alert('Donne un nom au bouton.');
+ if(addAnnotation(l,v)){$('annName').value='';$('annValue').value='';$('annSym').value=''}else alert('Cette annotation existe déjà.');
+};
+/* Glisser-déposer des annotations avec la poignée ☰ */
+let dragI=null;
+$('annList').addEventListener('pointerdown',e=>{
+ const h=e.target.closest('.handle');if(!h)return;
+ e.preventDefault();dragI=Number(h.parentElement.dataset.row);h.setPointerCapture(e.pointerId);h.parentElement.classList.add('dragging');
+});
+$('annList').addEventListener('pointermove',e=>{
+ if(dragI===null)return;
+ const rows=[...$('annList').querySelectorAll('.annRow')];
+ let j=rows.findIndex(r=>{const b=r.getBoundingClientRect();return e.clientY>=b.top&&e.clientY<b.bottom});
+ if(j<0){const first=rows[0].getBoundingClientRect(),last=rows[rows.length-1].getBoundingClientRect();if(e.clientY<first.top)j=0;else if(e.clientY>=last.bottom)j=rows.length-1;else return}
+ if(j!==dragI){const [a]=data.annList.splice(dragI,1);data.annList.splice(j,0,a);dragI=j;renderProfileForm();$('annList').querySelectorAll('.annRow')[j].classList.add('dragging')}
+ /* défilement automatique près des bords */
+ const sc=$('profils'),b=sc.getBoundingClientRect();if(e.clientY<b.top+60)sc.scrollTop-=12;else if(e.clientY>b.bottom-60)sc.scrollTop+=12;
+});
+['pointerup','pointercancel'].forEach(t=>$('annList').addEventListener(t,()=>{if(dragI===null)return;dragI=null;persist();renderKeys();renderProfileForm()}));
+$('annReset').onclick=()=>{if(confirm('Remplacer la liste actuelle par la liste de base ?')){data.annList=clone(DEFAULT_ANN);persist();renderKeys();renderProfileForm()}};
 
 /* ---- Sauvegarde ---- */
 $('exportBtn').onclick=()=>{
@@ -613,12 +670,13 @@ $('importFile').onchange=async e=>{
   const added=obj.profiles.map(cleanProfile);
   added.forEach(q=>{let base=q.name,k=2;while(data.profiles.some(p=>p.name===q.name))q.name=base+' ('+(k++)+')'});
   data.profiles.push(...added);
-  (obj.annotations||[]).forEach(a=>{if(typeof a==='string')addAnnotation(a)});
+  (obj.annotations||[]).forEach(a=>{if(typeof a==='string')addAnnotation(a,a)});
+  (obj.annList||[]).forEach(a=>{if(a&&typeof a.l==='string'&&typeof a.v==='string'&&!data.annList.some(x=>x.v===a.v))addAnnotation(a.l,a.v)});
   persist();renderAll();alert(added.length+' pilote(s) importé(s).');
  }catch(err){alert('Fichier non reconnu. Choisis un fichier exporté par RALLYE NOTE.')}
 };
 $('shareBtn').onclick=async()=>{
- const s=S(),text=P().name+' — '+s.name+'\n'+s.notes.map((n,i)=>(i+1)+'. '+(n.text||'')+(n.ink?' [dessin]':'')+(n.mark?' [⚑ '+n.mark+']':'')).join('\n');
+ const s=S(),text=P().name+' — '+s.name+'\n'+s.notes.map((n,i)=>(i+1)+'. '+plain(n.text||'')+(n.ink?' [dessin]':'')+(n.mark?' [⚑ '+n.mark+']':'')).join('\n');
  try{if(navigator.share)return await navigator.share({title:'RALLYE NOTE — '+s.name,text})}catch(e){if(e&&e.name==='AbortError')return}
  try{await navigator.clipboard.writeText(text);alert('Notes copiées dans le presse-papiers.')}catch(e){prompt('Copie ces notes :',text)}
 };
