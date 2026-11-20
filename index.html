@@ -100,11 +100,15 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
 .readHead{display:flex;justify-content:space-between;align-items:center;gap:8px}
 .readHead h2{margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 /* Liste qui défile au doigt ; la note en cours est encadrée en haut */
-#readList{position:relative;min-height:0;overflow-y:auto;scroll-snap-type:y mandatory;scroll-padding-top:6px;padding:6px 2px 0;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;border-radius:12px;background:#0b1424}
-#readList .spacer{height:75%;min-height:200px}
-#readList .note{scroll-snap-align:start;font-size:34px;line-height:1.15;min-height:64px;opacity:.7;border-left-width:6px;border:3px solid transparent;border-left:6px solid #475569}
-#readList .note.current{opacity:1;border:5px solid var(--accent);background:#1d3350;box-shadow:0 0 0 3px rgba(245,184,46,.25)}
-#readList .note.passed{opacity:.4}
+/* Fenêtre fixe : 3 notes passées, la note en cours (grande), 5 notes à venir */
+#readList{--k:1;position:relative;min-height:0;overflow:hidden;display:flex;flex-direction:column;padding:4px 4px;border-radius:12px;background:#0b1424;touch-action:none}
+#readList .note{font-size:calc(24px*var(--k));line-height:1.12;min-height:0;padding:5px 12px;margin:3px 0;opacity:.85;border:3px solid transparent;border-left:6px solid #475569}
+#readList .note:not(.current) .ntxt{flex-wrap:nowrap;overflow:hidden;white-space:nowrap}
+#readList .note.passed{opacity:.38;font-size:calc(20px*var(--k))}
+#readList .note.current{font-size:calc(46px*var(--k));padding:12px 14px;margin:6px 0;opacity:1;border:5px solid var(--accent);background:#1d3350;box-shadow:0 0 0 3px rgba(245,184,46,.25)}
+#readList .note.next1{opacity:1;border-left-color:var(--accent)}
+#readList .note.ghost{visibility:hidden}
+#readList .note:not(.current) .edit{display:none}
 .note{padding:10px 12px;border-radius:12px;background:#0f1a2b;margin:6px 0;border-left:6px solid #475569;font-size:24px;font-weight:800;display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer}
 .note.current{border-left-color:var(--accent);background:#1d3350}
 .note small{font-size:13px;color:var(--muted)}
@@ -150,7 +154,8 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
  .bRow button{min-height:62px;font-size:19px}
  #splitInfo{font-size:19px}#kmDisplay{font-size:22px;padding:16px 4px}
  .readHead h2{font-size:19px}.pill{font-size:17px}
- #readList .note{font-size:52px;min-height:90px;padding:14px 18px}
+ #readList .note{font-size:calc(32px*var(--k))}#readList .note.passed{font-size:calc(26px*var(--k))}
+ #readList .note.current{font-size:calc(64px*var(--k));padding:14px 18px}
  .note{font-size:30px;padding:12px 14px}
  .note .edit{padding:10px 14px;font-size:18px}
  .navRow button{min-height:76px;font-size:24px}
@@ -167,7 +172,8 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
  #annotationKeys button{min-height:62px;font-size:16px}
  #saveBar button{min-height:78px;font-size:21px}
  #draft{font-size:32px;min-height:64px}
- #readList .note{font-size:60px;min-height:104px}
+ #readList .note{font-size:calc(36px*var(--k))}#readList .note.passed{font-size:calc(28px*var(--k))}
+ #readList .note.current{font-size:calc(72px*var(--k))}
  .navRow button{min-height:90px;font-size:28px}
  #markKeys button{min-height:60px;font-size:18px}
 }
@@ -182,7 +188,7 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
  #annotationKeys button{font-size:15px}
 }
 @media (orientation:landscape) and (max-height:500px){
- #readList .note{font-size:28px}
+ #readList .note.current{font-size:calc(32px*var(--k))}
  #timer{font-size:30px}
 }
 </style>
@@ -327,13 +333,14 @@ const SYM={
  ferme:['Ferme','<path d="M3 3l17 9-17 9"/>'],
  pascorde:['Pas corde','<path d="M18.5 6.5A8 8 0 1 0 18.5 17.5"/><path d="M6 3l14 19"/>'],
  sommet:['Sommet','<path d="M6 3h12M5 22 12 3l7 19"/>'],
- cuvette:['Cuvette','<path d="M5 2l7 16 7-16M5 22h14"/>']
+ cuvette:['Cuvette','<path d="M5 2l7 16 7-16M5 22h14"/>'],
+ changement:['Changement','<path d="M3 8h16M15 4l4 4-4 4"/><path d="M21 16H5M9 12l-4 4 4 4"/>']
 };
 const symSvg=k=>`<svg class="sy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-label="${SYM[k][0]}">${SYM[k][1]}</svg>`;
 const rt=t=>esc(t).replace(/⟦(\w+)⟧/g,(m,k)=>SYM[k]?symSvg(k):m);          /* texte → affichage avec symboles */
 const plain=t=>String(t).replace(/⟦(\w+)⟧/g,(m,k)=>SYM[k]?'['+SYM[k][0]+']':m); /* texte → partage */
 const DEFAULT_ANN=[['Y','Y'],['Carrefour','⟦carrefour⟧'],['Poteau','⟦poteau⟧'],['Arrière','AR'],['Attention','⟦attention⟧'],['Et','et'],['Maison','⟦maison⟧'],['Étroit','//'],['Chicane','Chicane'],['Tenir','Tenir'],['T','T'],['Glisse','⟦glisse⟧'],['Départ','Départ'],['Fly Finish','F.Finish'],['Ouvre','⟦ouvre⟧'],['Ferme','⟦ferme⟧'],
- ['Quitter','Qit'],['À fond','AFD'],['Pour','↳'],['Sur','/'],['Frein','FR'],['En frein','En FR'],['Fini frein','F.FR'],['Corde','C'],['Pas corde','⟦pascorde⟧'],['Sommet','⟦sommet⟧'],['Cuvette','⟦cuvette⟧'],['Pas extérieur','P.ext.'],['Tard','Tard.'],['Bref','Bref.'],['Jet','Jet']].map(([l,v])=>({l,v}));
+ ['Quitter','Qit'],['À fond','AFD'],['Pour','↳'],['Sur','/'],['Frein','FR'],['En frein','En FR'],['Fini frein','F.FR'],['Corde','C'],['Pas corde','⟦pascorde⟧'],['Sommet','⟦sommet⟧'],['Cuvette','⟦cuvette⟧'],['Pas extérieur','P.ext.'],['Tard','Tard.'],['Bref','Bref.'],['Jet','Jet'],['Changement','⟦changement⟧']].map(([l,v])=>({l,v}));
 const DEF={leftLabel:'G',rightLabel:'D',format:'G4',grades:['1','2','3','4','5','6'],distances:['30 m','50 m','80 m','100 m','150 m','200 m','300 m','500 m']};
 const clone=o=>JSON.parse(JSON.stringify(o));
 function load(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}}
@@ -360,6 +367,9 @@ if(!Array.isArray(data.annList)){ /* nouvelle liste d'annotations (+ reprise des
  (Array.isArray(data.annotations)?data.annotations:[]).forEach(a=>{if(typeof a==='string'&&!data.annList.some(x=>x.v.toLowerCase()===a.toLowerCase()))data.annList.push({l:a,v:a})});
 }
 delete data.annotations;
+/* Symboles ajoutés après coup : proposés une seule fois (pas remis si on les supprime) */
+data.symAdded=Array.isArray(data.symAdded)?data.symAdded:[];
+['changement'].forEach(k=>{if(data.symAdded.includes(k))return;data.symAdded.push(k);const v='⟦'+k+'⟧';if(!data.annList.some(x=>x.v===v))data.annList.push({l:SYM[k][0],v})});
 const P=()=>data.profiles[data.curProfile];
 const S=()=>P().stages[P().cur];
 function fix(){
@@ -396,45 +406,41 @@ function renderNotes(){
  const recent=n.slice(-12),box=$('recentNotes');
  box.innerHTML=recent.length?recent.map(x=>`<div>${rt(x.text)} ${inkSvg(x.ink)}</div>`).join(''):'<div class="muted" style="border:0">Les dernières notes apparaîtront ici.</div>';
  fitRecent();
- $('readList').innerHTML=n.map((x,i)=>`<div class="note${i===s.pos?' current':''}" data-goto="${i}"><span class="ntxt"><span>${rt(x.text)}</span>${inkSvg(x.ink)}${x.mark?'<span class="flag">⚑ '+esc(x.mark)+'</span>':''}</span><span style="display:flex;gap:6px;align-items:center;flex-shrink:0"><small>${i+1}</small><button type="button" class="edit" data-edit-note="${i}" aria-label="Modifier la note ${i+1}">✎</button></span></div>`).join('')+(n.length?'<div class="spacer"></div>':'<p class="muted" style="padding:10px">Aucune note pour cette spéciale. Prends-les dans l\'onglet Reconnaissance.</p>');
  renderReader();
 }
 /* Affiche autant de dernières notes que la place le permet (sans ligne coupée) */
 function fitRecent(){const b=$('recentNotes');if(!b.offsetParent)return;while(b.children.length>1&&b.scrollHeight>b.clientHeight+1)b.firstElementChild.remove()}
-window.addEventListener('resize',()=>renderNotes());
-function renderReader(smooth){
- const s=S(),n=s.notes;
+window.addEventListener('resize',()=>{renderNotes();renderReader()});
+const PREV=3,NEXT=5; /* notes passées / à venir affichées en spéciale */
+function noteRow(x,i,cls){return `<div class="note ${cls}" data-goto="${i}"><span class="ntxt"><span>${rt(x.text)}</span>${inkSvg(x.ink)}${x.mark?'<span class="flag">⚑ '+esc(x.mark)+'</span>':''}</span><span style="display:flex;gap:6px;align-items:center;flex-shrink:0"><small>${i+1}</small><button type="button" class="edit" data-edit-note="${i}" aria-label="Modifier la note ${i+1}">✎</button></span></div>`}
+function renderReader(){
+ const s=S(),n=s.notes,list=$('readList');
  $('readTitle').textContent=P().name+' · '+s.name;
  $('readPos').textContent=n.length?(s.pos+1)+' / '+n.length:'0 / 0';
- const list=$('readList');
- list.querySelectorAll('.note').forEach((el,i)=>{el.classList.toggle('current',i===s.pos);el.classList.toggle('passed',i<s.pos)});
- scrollToCurrent(smooth);
+ if(!n.length){list.innerHTML='<p class="muted" style="padding:10px">Aucune note pour cette spéciale. Prends-les dans l\'onglet Reconnaissance.</p>';return}
+ let h='';
+ /* lignes vides au début pour que la note en cours reste toujours au même endroit */
+ for(let k=0;k<PREV-s.pos;k++)h+='<div class="note passed ghost"><span class="ntxt">&nbsp;</span></div>';
+ for(let i=Math.max(0,s.pos-PREV);i<=Math.min(n.length-1,s.pos+NEXT);i++)
+  h+=noteRow(n[i],i,i<s.pos?'passed':i===s.pos?'current':i===s.pos+1?'next1':'');
+ list.innerHTML=h;
+ fitReader();
 }
-/* Fait remonter la note en cours dans le rectangle, en haut de la liste */
-let autoScrolling=false,autoTimer=null;
-function scrollToCurrent(smooth){
- const list=$('readList'),el=list.querySelectorAll('.note')[S().pos];
- if(!el||!list.offsetParent)return;
- autoScrolling=true;clearTimeout(autoTimer);autoTimer=setTimeout(()=>autoScrolling=false,smooth?600:80);
- list.scrollTo({top:el.offsetTop-6,behavior:smooth?'smooth':'auto'});
+/* Réduit le texte si les 9 notes ne tiennent pas dans l'écran */
+function fitReader(){
+ const list=$('readList');if(!list.offsetParent)return;
+ let k=1;list.style.setProperty('--k',k);
+ while(list.scrollHeight>list.clientHeight+1&&k>.45){k-=.05;list.style.setProperty('--k',k.toFixed(2))}
 }
-/* Quand on fait défiler au doigt : la note arrivée en haut devient la note en cours */
-let scrollRaf=null,saveTimer=null;
-$('readList').addEventListener('scroll',()=>{
- if(autoScrolling||scrollRaf)return;
- scrollRaf=requestAnimationFrame(()=>{
-  scrollRaf=null;
-  const list=$('readList'),notes=list.querySelectorAll('.note'),top=list.scrollTop+6;
-  let best=0,bd=Infinity;
-  notes.forEach((el,i)=>{const d=Math.abs(el.offsetTop-top);if(d<bd){bd=d;best=i}});
-  if(notes.length&&best!==S().pos){
-   S().pos=best;
-   notes.forEach((el,i)=>{el.classList.toggle('current',i===best);el.classList.toggle('passed',i<best)});
-   $('readPos').textContent=(best+1)+' / '+notes.length;
-   clearTimeout(saveTimer);saveTimer=setTimeout(persist,400);
-  }
- });
+/* Glisser le doigt vers le haut = note suivante, vers le bas = note précédente */
+let swY=null;
+$('readList').addEventListener('touchstart',e=>{swY=e.touches[0].clientY},{passive:true});
+$('readList').addEventListener('touchend',e=>{
+ if(swY==null)return;const dy=e.changedTouches[0].clientY-swY;swY=null;
+ if(Math.abs(dy)>40){move(dy<0?1:-1);suppressClick=true;setTimeout(()=>suppressClick=false,350)}
 },{passive:true});
+let suppressClick=false,wheelLock=0;
+$('readList').addEventListener('wheel',e=>{e.preventDefault();const t=Date.now();if(t-wheelLock<250)return;wheelLock=t;move(e.deltaY>0?1:-1)},{passive:false});
 function renderProfileForm(){
  const p=P();
  $('pName').value=p.name;$('pLeft').value=p.leftLabel;$('pRight').value=p.rightLabel;$('pFormat').value=p.format;
@@ -552,7 +558,7 @@ document.addEventListener('click',e=>{
  if(b=e.target.closest('[data-ann-i]')){const a=data.annList[Number(b.dataset.annI)];if(a)addDraftPart(a.v);return}
  if(e.target.closest('#newAnnotation')){const v=prompt('Nouvelle annotation (pour tous les pilotes) :');if(v&&!addAnnotation(v,v))alert('Cette annotation existe déjà.');return}
  if(b=e.target.closest('[data-edit-note]'))return editNote(Number(b.dataset.editNote));
- if(b=e.target.closest('[data-goto]')){S().pos=Number(b.dataset.goto);persist();renderReader(true);return}
+ if(b=e.target.closest('[data-goto]')){if(suppressClick)return;S().pos=Number(b.dataset.goto);persist();renderReader();return}
  if(b=e.target.closest('[data-mark]')){
   const s=S(),note=s.notes[s.pos];
   if(!note)return alert('Aucune note en cours.');
@@ -566,7 +572,7 @@ document.addEventListener('click',e=>{
 document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
  document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x===b));
  ['reco','speciale','profils'].forEach(id=>$(id).classList.toggle('hidden',id!==b.dataset.tab));
- if(b.dataset.tab==='speciale')renderReader(false);
+ if(b.dataset.tab==='speciale')renderReader();
  if(b.dataset.tab==='reco')renderNotes();
  if(b.dataset.tab==='profils')renderProfileForm();
 });
@@ -574,7 +580,7 @@ $('profileSelect').onchange=e=>{data.curProfile=Number(e.target.value);draftPart
 $('stageSelect').onchange=e=>{P().cur=Number(e.target.value);persist();renderAll()};
 
 /* ---- Lecture en spéciale ---- */
-function move(d){const s=S();if(!s.notes.length)return;s.pos=Math.max(0,Math.min(s.notes.length-1,s.pos+d));persist();renderReader(true)}
+function move(d){const s=S();if(!s.notes.length)return;s.pos=Math.max(0,Math.min(s.notes.length-1,s.pos+d));persist();renderReader()}
 $('nextBtn').onclick=()=>move(1);
 $('prevBtn').onclick=()=>move(-1);
 document.addEventListener('keydown',e=>{
