@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#111827">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<title>RALLYE NOTE</title>
+<style>
+:root{--bg:#0b1220;--panel:#172235;--panel2:#223149;--txt:#f8fafc;--muted:#aab8cc;--accent:#f5b82e;--red:#ef4444;--green:#22c55e}
+*{box-sizing:border-box}html,body{height:100%;margin:0;overflow:hidden}
+body{background:var(--bg);color:var(--txt);font:16px system-ui,Arial;display:flex;flex-direction:column}
+header{flex:none;padding:6px 8px;background:#111827;border-bottom:1px solid #334155;display:flex;gap:6px;align-items:center}
+header h1{font-size:17px;margin:0;flex:none}
+header select{flex:1;padding:7px 6px;font-size:14px;font-weight:700}
+nav{flex:none;display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:6px;background:#111827}
+nav button{padding:9px 5px;font-size:14px}
+button,input,select{font:inherit}
+button{border:0;border-radius:12px;padding:13px 10px;background:var(--panel2);color:var(--txt);font-weight:700;touch-action:manipulation}
+button:active{filter:brightness(1.3)}
+button.active,button.primary{background:var(--accent);color:#111827}
+button.danger{background:#7f1d1d}
+main{flex:1;min-height:0;width:100%;padding:6px;max-width:1000px;margin:0 auto;overflow:hidden}
+section{height:100%}
+.panel{background:var(--panel);border:1px solid #334155;border-radius:12px;padding:8px}
+h2{font-size:15px;margin:0 0 6px}
+.muted{color:var(--muted)}
+.row{display:flex;gap:5px;align-items:center}.row>*{flex:1;min-width:0}
+input,select{min-width:0;width:100%;padding:12px;border-radius:10px;border:1px solid #475569;background:#0f1a2b;color:#fff}
+label{display:block;font-size:12px;color:var(--muted);font-weight:700;margin:8px 0 3px}
+.hidden{display:none!important}
+.flag{color:var(--accent);font-weight:800;font-size:.7em;white-space:nowrap}
+.pill{display:inline-block;padding:5px 10px;background:#334155;border-radius:99px;color:#fff;font-size:14px;font-weight:700}
+
+/* ===== RECONNAISSANCE ===== */
+#reco>.panel{height:100%;display:grid;grid-template-rows:minmax(90px,1fr) auto auto auto auto auto auto;gap:5px}
+#recentBox{min-height:0;overflow:hidden;padding:8px;border-radius:12px;background:#0f1a2b;border:1px solid #475569;display:flex;flex-direction:column}
+#recentBox .lbl{font-size:11px;color:var(--muted);font-weight:700;margin-bottom:3px}
+#recentNotes{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:flex-end;gap:3px;font-size:24px;line-height:1.25;font-weight:800;overflow:hidden}
+#recentNotes>div{padding:3px 0;border-bottom:1px solid #334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#draft{min-height:44px;padding:6px 10px;border-radius:10px;background:#0f1a2b;border:2px solid var(--accent);font-size:21px;font-weight:900;overflow:hidden}
+#distanceKeys{display:grid;gap:4px}
+#distanceKeys button{min-height:47px;padding:6px 3px;font-size:16px}
+#turnKeys{display:grid;grid-template-columns:1fr 1.5fr 1fr;gap:5px;align-items:stretch}
+#turnKeys button{min-height:59px;padding:6px;font-size:21px}
+#turnKeys .sideKey{font-size:29px;font-weight:900}
+#turnKeys .sideKey.long{font-size:18px}
+#gradeKeys{display:grid;gap:4px}
+#annotationKeys{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+#annotationKeys button{min-height:43px;padding:5px 3px;font-size:14px;border-radius:8px}
+#annotationKeys #newAnnotation{background:var(--accent);color:#111827}
+#noteText{padding:8px;font-size:14px}
+#saveBar{display:grid;grid-template-columns:1fr 1fr 1.2fr 2fr;gap:5px}
+#drawBtn{background:#334f7a}
+/* Dessins au stylet */
+svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
+.ntxt{display:flex;flex-wrap:wrap;align-items:center;gap:.25em .4em;min-width:0}
+#recentNotes svg.ink{height:1.1em}
+#readList svg.ink{height:2em}
+#draft{display:flex;align-items:center;gap:8px}
+#draft svg.ink{height:1.3em}
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:50;display:flex;align-items:center;justify-content:center;padding:10px}
+#modal .sheet{background:var(--panel);border:1px solid #475569;border-radius:16px;padding:12px;width:100%;max-width:1000px;max-height:100%;overflow:auto}
+#padWrap{background:#0b1424;border:2px dashed #475569;border-radius:12px;margin:8px 0;position:relative}
+#pad{display:block;width:100%;touch-action:none;cursor:crosshair}
+#padHint{position:absolute;left:12px;top:8px;color:#64748b;font-size:14px;pointer-events:none}
+.padTools{display:flex;gap:6px;flex-wrap:wrap}
+.padTools button{padding:10px 14px;min-width:54px}
+.padTools .col{width:54px;border:3px solid transparent}
+.padTools .col.sel{border-color:#fff}
+#mBtns{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px;margin-top:10px}
+#mBtns button{min-height:54px}
+#saveBar button{min-height:52px;padding:6px;font-size:14px}
+
+/* ===== SPÉCIALE ===== */
+#speciale>.panel{height:100%;display:grid;grid-template-rows:auto auto minmax(0,1fr) auto;gap:6px}
+.banner{background:#0f1a2b;border:2px solid #334155;border-radius:12px;padding:6px 8px;display:grid;gap:5px}
+.bRow{display:flex;gap:6px;align-items:center}
+.bRow button{flex:1;min-height:46px;padding:8px 4px;font-size:15px}
+#timer{flex:1.6;font-size:36px;font-weight:900;font-variant-numeric:tabular-nums;text-align:center;line-height:1}
+#startStop.running{background:var(--red);color:#fff}
+#splitInfo{flex:2;font-size:15px;font-weight:800;font-variant-numeric:tabular-nums}
+#splitInfo .ahead{color:var(--green)}#splitInfo .late{color:var(--red)}
+#kmDisplay{flex:1.4;text-align:center;font-size:18px;font-weight:900;font-variant-numeric:tabular-nums;background:var(--panel2);border-radius:10px;padding:12px 4px}
+.bRow .kmBtn{flex:.6}
+.readHead{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.readHead h2{margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+/* Liste qui défile au doigt ; la note en cours est encadrée en haut */
+#readList{position:relative;min-height:0;overflow-y:auto;scroll-snap-type:y mandatory;scroll-padding-top:6px;padding:6px 2px 0;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;border-radius:12px;background:#0b1424}
+#readList .spacer{height:75%;min-height:200px}
+#readList .note{scroll-snap-align:start;font-size:34px;line-height:1.15;min-height:64px;opacity:.7;border-left-width:6px;border:3px solid transparent;border-left:6px solid #475569}
+#readList .note.current{opacity:1;border:5px solid var(--accent);background:#1d3350;box-shadow:0 0 0 3px rgba(245,184,46,.25)}
+#readList .note.passed{opacity:.4}
+.note{padding:10px 12px;border-radius:12px;background:#0f1a2b;margin:6px 0;border-left:6px solid #475569;font-size:24px;font-weight:800;display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer}
+.note.current{border-left-color:var(--accent);background:#1d3350}
+.note small{font-size:13px;color:var(--muted)}
+.note .edit{padding:7px 10px;font-size:14px}
+.navRow{display:grid;grid-template-columns:1fr 2fr;gap:6px}
+.navRow button{min-height:58px;font-size:19px}
+#markKeys{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
+#markKeys button{min-height:38px;padding:4px;font-size:13px}
+
+/* ===== PROFILS ===== */
+#profils{overflow:auto}
+#profils .panel{margin-bottom:8px}
+.btnGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;margin-top:8px}
+.btnGrid button{padding:12px 6px;font-size:14px}
+.annItem{display:inline-flex;align-items:center;gap:4px;background:#334155;border-radius:99px;padding:3px 3px 3px 10px;margin:3px;font-weight:700;font-size:14px}
+.annItem button{padding:4px 9px;border-radius:99px;font-size:13px;background:#7f1d1d}
+.hint{font-size:12px;color:var(--muted);margin:4px 0 0}
+
+@media (orientation:portrait){
+ #recentNotes{font-size:21px}
+ #distanceKeys button{min-height:43px;font-size:14px;white-space:nowrap;padding:4px 1px}
+ #turnKeys{grid-template-columns:1fr 2.4fr 1fr}
+ #turnKeys button{min-height:54px}
+ #gradeKeys button{padding:4px 1px}
+ #annotationKeys button{min-height:40px;font-size:13px}
+}
+/* ===== TABLETTE (Redmi Pad 2 : ~1280×800 en paysage, ~800×1280 en portrait) ===== */
+@media (min-width:760px) and (min-height:700px){
+ main{max-width:none;padding:8px}
+ header h1{font-size:22px}header select{font-size:17px;padding:9px}
+ nav button{font-size:17px;padding:12px}
+ #recentNotes{font-size:30px}
+ #draft{font-size:28px;min-height:56px}
+ #distanceKeys button{min-height:58px;font-size:21px}
+ #turnKeys button{min-height:72px;font-size:30px}
+ #turnKeys .sideKey{font-size:38px}#turnKeys .sideKey.long{font-size:26px}
+ #annotationKeys button{min-height:52px;font-size:17px}
+ #noteText{font-size:18px;padding:10px}
+ #saveBar button{min-height:64px;font-size:19px}
+ .banner{display:flex;gap:10px;padding:8px 10px}
+ .banner .bRow{flex:1}
+ #timer{font-size:52px}
+ .bRow button{min-height:62px;font-size:19px}
+ #splitInfo{font-size:19px}#kmDisplay{font-size:22px;padding:16px 4px}
+ .readHead h2{font-size:19px}.pill{font-size:17px}
+ #readList .note{font-size:52px;min-height:90px;padding:14px 18px}
+ .note{font-size:30px;padding:12px 14px}
+ .note .edit{padding:10px 14px;font-size:18px}
+ .navRow button{min-height:76px;font-size:24px}
+ #markKeys button{min-height:52px;font-size:17px}
+ #profils{max-width:900px;margin:0 auto}
+ #profils input,#profils select{font-size:18px}label{font-size:14px}
+}
+@media (min-width:760px) and (min-height:700px) and (orientation:portrait){
+ .banner{flex-direction:column}
+ #turnKeys{grid-template-columns:1fr 2.2fr 1fr}
+ #distanceKeys button{min-height:70px;font-size:22px}
+ #turnKeys button{min-height:92px;font-size:36px}
+ #turnKeys .sideKey{font-size:46px}
+ #annotationKeys button{min-height:62px;font-size:16px}
+ #saveBar button{min-height:78px;font-size:21px}
+ #draft{font-size:32px;min-height:64px}
+ #readList .note{font-size:60px;min-height:104px}
+ .navRow button{min-height:90px;font-size:28px}
+ #markKeys button{min-height:60px;font-size:18px}
+}
+/* Paysage tablette : note en cours à gauche, liste à droite */
+@media (min-width:1000px) and (min-height:600px) and (orientation:landscape){
+ #speciale .ctrl{display:grid;grid-template-columns:3fr 2fr;gap:8px;align-items:stretch}
+ #speciale .ctrl .navRow{margin:0!important}
+ #reco>.panel{grid-template-columns:2fr 3fr;grid-template-rows:auto auto minmax(0,1fr) auto auto;column-gap:10px;
+  grid-template-areas:"recent dist" "recent turn" "recent ann" "draft draft" "com save"}
+ #recentBox{grid-area:recent}#draft{grid-area:draft}#distanceKeys{grid-area:dist}#turnKeys{grid-area:turn}
+ #annotationKeys{grid-area:ann;align-content:start}#reco .row{grid-area:com}#saveBar{grid-area:save}
+ #annotationKeys button{font-size:15px}
+}
+@media (orientation:landscape) and (max-height:500px){
+ #readList .note{font-size:28px}
+ #timer{font-size:30px}
+}
+</style>
+</head>
+<body>
+<header>
+ <h1>🏁</h1>
+ <select id="profileSelect" aria-label="Pilote"></select>
+ <select id="stageSelect" aria-label="Spéciale"></select>
+</header>
+<nav>
+ <button class="active" data-tab="reco">Reconnaissance</button>
+ <button data-tab="speciale">Spéciale</button>
+ <button data-tab="profils">Pilotes & carnet</button>
+</nav>
+<main>
+
+<section id="reco">
+ <div class="panel">
+  <div id="recentBox"><div class="lbl">DERNIÈRES NOTES</div><div id="recentNotes"></div></div>
+  <div id="draft">Ta note apparaîtra ici…</div>
+  <div id="distanceKeys"></div>
+  <div id="turnKeys">
+   <button class="sideKey" id="leftSelect" type="button">G</button>
+   <div id="gradeKeys"></div>
+   <button class="sideKey" id="rightSelect" type="button">D</button>
+  </div>
+  <div id="annotationKeys"></div>
+  <div class="row"><input id="noteText" placeholder="Commentaire facultatif…" aria-label="Commentaire facultatif"></div>
+  <div id="saveBar"><button id="undoDraft">Annuler</button><button id="clearDraft">Effacer</button><button id="drawBtn">✍ Dessin</button><button class="primary" id="saveDraft">VALIDER LA NOTE</button></div>
+ </div>
+</section>
+
+<section id="speciale" class="hidden">
+ <div class="panel">
+  <div class="banner">
+   <div class="bRow">
+    <div id="timer">00:00.0</div>
+    <button class="primary" id="startStop">▶ Départ</button>
+    <button id="takeSplit">Inter.</button>
+    <button id="reset">RAZ</button>
+   </div>
+   <div class="bRow">
+    <div id="splitInfo" class="muted">Inter. --:--.-</div>
+    <button class="kmBtn" id="kmMinus">−</button>
+    <div id="kmDisplay" title="Touchez pour définir la longueur">0.0 / – km</div>
+    <button class="kmBtn" id="kmPlus">+</button>
+   </div>
+  </div>
+  <div class="readHead"><h2 id="readTitle">Spéciale</h2><span class="pill" id="readPos">0 / 0</span></div>
+  <div id="readList"></div>
+  <div class="ctrl">
+   <div class="navRow" style="margin-bottom:5px"><button id="prevBtn">◀ Préc.</button><button class="primary" id="nextBtn">Suivante ▶</button></div>
+   <div id="markKeys"><button data-mark="SALE">SALE</button><button data-mark="PAS CORDE">PAS CORDE</button><button data-mark="CORDE">CORDE</button><button data-mark="À MODIFIER">À MODIFIER</button></div>
+  </div>
+ </div>
+</section>
+
+<section id="profils" class="hidden">
+ <div class="panel">
+  <h2>Profil du pilote</h2>
+  <label for="pName">Nom du pilote</label><input id="pName">
+  <div class="row">
+   <div><label for="pLeft">Gauche s'écrit</label><input id="pLeft" placeholder="G"></div>
+   <div><label for="pRight">Droite s'écrit</label><input id="pRight" placeholder="D"></div>
+  </div>
+  <label for="pFormat">Ordre virage / degré</label>
+  <select id="pFormat">
+   <option value="G4">G4 (sens puis degré, collés)</option>
+   <option value="G 4">G 4 (sens puis degré, espacés)</option>
+   <option value="4G">4G (degré puis sens, collés)</option>
+   <option value="4 G">4 G (degré puis sens, espacés)</option>
+  </select>
+  <label for="pGrades">Degrés des virages (séparés par des virgules)</label><input id="pGrades" placeholder="1, 2, 3, 4, 5, 6">
+  <p class="hint">Ex. : 1, 2, 3, 4, 5, 6 · ou : Épingle, 1, 2, 3, 4, 5 · ou : 10, 20, 30…</p>
+  <label for="pDist">Distances (séparées par des virgules)</label><input id="pDist" placeholder="30 m, 50 m, 100 m">
+  <p class="hint">Écris-les comme le pilote les annonce : « 100 m », « 100 », « cent »…</p>
+  <div class="btnGrid">
+   <button class="primary" id="saveProfile">Enregistrer le profil</button>
+   <button id="addProfile">＋ Nouveau pilote</button>
+   <button id="dupProfile">Dupliquer ce pilote</button>
+   <button class="danger" id="delProfile">Supprimer ce pilote</button>
+  </div>
+ </div>
+ <div class="panel">
+  <h2>Carnet du pilote : spéciales</h2>
+  <p class="hint" id="stageInfo"></p>
+  <div class="btnGrid">
+   <button class="primary" id="addStage">＋ Nouvelle spéciale</button>
+   <button id="renameStage">Renommer la spéciale</button>
+   <button id="clearNotes">Vider les notes</button>
+   <button class="danger" id="delStage">Supprimer la spéciale</button>
+  </div>
+ </div>
+ <div class="panel">
+  <h2>Annotations communes à tous les pilotes</h2>
+  <p class="hint">Les annotations de base (À fond, Corde, Sale, Saut…) sont toujours présentes. Tes annotations perso s'ajoutent pour tous les pilotes :</p>
+  <div id="annList" style="margin-top:6px"></div>
+  <div class="row" style="margin-top:6px"><input id="annInput" placeholder="Nouvelle annotation (ex. frein, piège)"><button id="annAdd" style="flex:.45">Ajouter</button></div>
+ </div>
+ <div class="panel">
+  <h2>Sauvegarde</h2>
+  <p class="hint">Les données restent dans ce navigateur. Exporte régulièrement un fichier de sauvegarde (tous les pilotes et toutes les spéciales).</p>
+  <div class="btnGrid">
+   <button class="primary" id="exportBtn">Exporter (fichier)</button>
+   <button id="importBtn">Importer un fichier</button>
+   <button id="shareBtn" style="grid-column:1/-1">Partager les notes de la spéciale (texte)</button>
+  </div>
+  <input type="file" id="importFile" accept=".json,application/json" class="hidden">
+ </div>
+</section>
+
+</main>
+<div id="modal" class="hidden"><div class="sheet">
+ <h2 id="mTitle">Dessin</h2>
+ <input id="mText" placeholder="Texte de la note">
+ <div id="padWrap"><canvas id="pad"></canvas><div id="padHint">Dessine ici au stylet (ou au doigt)</div></div>
+ <div class="padTools">
+  <button class="col sel" data-col="#f8fafc" style="background:#f8fafc" aria-label="Blanc"></button>
+  <button class="col" data-col="#f5b82e" style="background:#f5b82e" aria-label="Jaune"></button>
+  <button class="col" data-col="#ef4444" style="background:#ef4444" aria-label="Rouge"></button>
+  <button class="col" data-col="#38bdf8" style="background:#38bdf8" aria-label="Bleu"></button>
+  <button id="padUndo">↶ Trait</button>
+  <button id="padClear">Effacer le dessin</button>
+ </div>
+ <div id="mBtns"></div>
+</div></div>
+<script>
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const BASE_ANN=[['À FOND','À fond'],['/','/ Sur'],['→','→ Pour'],['ET','Et'],['^','^ Sommet'],['CORDE','Corde'],['PAS CORDE','Pas corde'],['SALE','Sale'],['SAUT','Saut'],['FERME','Ferme'],['OUVRE','Ouvre'],['ATTENTION','Attention'],['+','+'],['COMMENTAIRE','Commentaire']];
+const DEF={leftLabel:'G',rightLabel:'D',format:'G4',grades:['1','2','3','4','5','6'],distances:['30 m','50 m','80 m','100 m','150 m','200 m','300 m','500 m']};
+const clone=o=>JSON.parse(JSON.stringify(o));
+function load(k,d){try{const v=JSON.parse(localStorage.getItem(k));return v??d}catch(e){return d}}
+function newStage(name){return{name,notes:[],prevSplit:0,pos:0}}
+function newProfile(name){return{name,...clone(DEF),stages:[newStage('Spéciale 1')],cur:0}}
+function cleanProfile(p){
+ const q=newProfile(String(p&&p.name||'Pilote'));
+ ['leftLabel','rightLabel','format'].forEach(k=>{if(typeof p[k]==='string'&&p[k])q[k]=p[k]});
+ ['grades','distances'].forEach(k=>{if(Array.isArray(p[k])&&p[k].length)q[k]=p[k].map(String)});
+ if(Array.isArray(p.stages)&&p.stages.length)q.stages=p.stages.map(s=>({name:String(s&&s.name||'Spéciale'),notes:Array.isArray(s&&s.notes)?s.notes.filter(n=>n&&(n.text||Array.isArray(n.ink))).map(n=>{const o={text:String(n.text||'')};if(n.mark)o.mark=String(n.mark);if(Array.isArray(n.ink))o.ink=n.ink;return o}):[],prevSplit:Number(s&&s.prevSplit)||0,pos:0}));
+ return q;
+}
+
+/* ---- Données (reprend automatiquement les notes de l'ancienne version) ---- */
+let data=load('rn_data_v2',null);
+if(!data||!Array.isArray(data.profiles)||!data.profiles.length){
+ const p=newProfile('Pilote 1');
+ p.stages[0].notes=load('rn_notes',[]).filter(n=>n&&n.text).map(n=>({text:String(n.text)}));
+ p.stages[0].prevSplit=Number(localStorage.getItem('rn_previous_split')||0);
+ data={profiles:[p],curProfile:0,annotations:load('rn_custom_annotations',[])};
+}
+if(!Array.isArray(data.annotations))data.annotations=[];
+const P=()=>data.profiles[data.curProfile];
+const S=()=>P().stages[P().cur];
+function fix(){
+ data.curProfile=Math.max(0,Math.min(data.profiles.length-1,data.curProfile|0));
+ data.profiles.forEach(p=>{if(!p.stages.length)p.stages.push(newStage('Spéciale 1'));p.cur=Math.max(0,Math.min(p.stages.length-1,p.cur|0));p.stages.forEach(s=>{s.pos=Math.max(0,Math.min(Math.max(0,s.notes.length-1),s.pos|0))})});
+}
+function persist(){fix();try{localStorage.setItem('rn_data_v2',JSON.stringify(data))}catch(e){alert('Enregistrement impossible (mémoire du navigateur pleine ?). Exporte une sauvegarde.')}}
+
+/* ---- Affichage ---- */
+function renderSelects(){
+ $('profileSelect').innerHTML=data.profiles.map((p,i)=>`<option value="${i}">👤 ${esc(p.name)}</option>`).join('');
+ $('profileSelect').value=data.curProfile;
+ $('stageSelect').innerHTML=P().stages.map((s,i)=>`<option value="${i}">${esc(s.name)}</option>`).join('');
+ $('stageSelect').value=P().cur;
+}
+function turnLabel(side,g){
+ const L=side==='G'?P().leftLabel:P().rightLabel;
+ switch(P().format){case '4G':return g+L;case 'G 4':return L+' '+g;case '4 G':return g+' '+L;default:return L+g}
+}
+function renderKeys(){
+ const p=P();
+ $('distanceKeys').innerHTML=p.distances.map(d=>`<button type="button" data-distance="${esc(d)}">${esc(d)}</button>`).join('');
+ $('distanceKeys').style.gridTemplateColumns=`repeat(${Math.max(1,Math.min(p.distances.length,8))},minmax(0,1fr))`;
+ $('gradeKeys').innerHTML=p.grades.map(g=>`<button type="button" data-grade="${esc(g)}">${esc(g)}</button>`).join('');
+ $('gradeKeys').style.gridTemplateColumns=`repeat(${Math.max(1,Math.min(p.grades.length,6))},minmax(0,1fr))`;
+ $('leftSelect').textContent=p.leftLabel;$('rightSelect').textContent=p.rightLabel;
+ $('leftSelect').classList.toggle('long',p.leftLabel.length>2);$('rightSelect').classList.toggle('long',p.rightLabel.length>2);
+ $('annotationKeys').innerHTML=BASE_ANN.map(([v,l])=>`<button type="button" data-ann="${esc(v)}">${esc(l)}</button>`).join('')
+  +data.annotations.map(a=>`<button type="button" data-ann="${esc(a)}">${esc(a)}</button>`).join('')
+  +'<button type="button" id="newAnnotation">＋ Perso</button>';
+ chooseSide(selectedSide);
+}
+function renderNotes(){
+ const s=S(),n=s.notes;
+ const recent=n.slice(-12),box=$('recentNotes');
+ box.innerHTML=recent.length?recent.map(x=>`<div>${esc(x.text)} ${inkSvg(x.ink)}</div>`).join(''):'<div class="muted" style="border:0">Les dernières notes apparaîtront ici.</div>';
+ fitRecent();
+ $('readList').innerHTML=n.map((x,i)=>`<div class="note${i===s.pos?' current':''}" data-goto="${i}"><span class="ntxt"><span>${esc(x.text)}</span>${inkSvg(x.ink)}${x.mark?'<span class="flag">⚑ '+esc(x.mark)+'</span>':''}</span><span style="display:flex;gap:6px;align-items:center;flex-shrink:0"><small>${i+1}</small><button type="button" class="edit" data-edit-note="${i}" aria-label="Modifier la note ${i+1}">✎</button></span></div>`).join('')+(n.length?'<div class="spacer"></div>':'<p class="muted" style="padding:10px">Aucune note pour cette spéciale. Prends-les dans l\'onglet Reconnaissance.</p>');
+ renderReader();
+}
+/* Affiche autant de dernières notes que la place le permet (sans ligne coupée) */
+function fitRecent(){const b=$('recentNotes');if(!b.offsetParent)return;while(b.children.length>1&&b.scrollHeight>b.clientHeight+1)b.firstElementChild.remove()}
+window.addEventListener('resize',()=>renderNotes());
+function renderReader(smooth){
+ const s=S(),n=s.notes;
+ $('readTitle').textContent=P().name+' · '+s.name;
+ $('readPos').textContent=n.length?(s.pos+1)+' / '+n.length:'0 / 0';
+ const list=$('readList');
+ list.querySelectorAll('.note').forEach((el,i)=>{el.classList.toggle('current',i===s.pos);el.classList.toggle('passed',i<s.pos)});
+ scrollToCurrent(smooth);
+}
+/* Fait remonter la note en cours dans le rectangle, en haut de la liste */
+let autoScrolling=false,autoTimer=null;
+function scrollToCurrent(smooth){
+ const list=$('readList'),el=list.querySelectorAll('.note')[S().pos];
+ if(!el||!list.offsetParent)return;
+ autoScrolling=true;clearTimeout(autoTimer);autoTimer=setTimeout(()=>autoScrolling=false,smooth?600:80);
+ list.scrollTo({top:el.offsetTop-6,behavior:smooth?'smooth':'auto'});
+}
+/* Quand on fait défiler au doigt : la note arrivée en haut devient la note en cours */
+let scrollRaf=null,saveTimer=null;
+$('readList').addEventListener('scroll',()=>{
+ if(autoScrolling||scrollRaf)return;
+ scrollRaf=requestAnimationFrame(()=>{
+  scrollRaf=null;
+  const list=$('readList'),notes=list.querySelectorAll('.note'),top=list.scrollTop+6;
+  let best=0,bd=Infinity;
+  notes.forEach((el,i)=>{const d=Math.abs(el.offsetTop-top);if(d<bd){bd=d;best=i}});
+  if(notes.length&&best!==S().pos){
+   S().pos=best;
+   notes.forEach((el,i)=>{el.classList.toggle('current',i===best);el.classList.toggle('passed',i<best)});
+   $('readPos').textContent=(best+1)+' / '+notes.length;
+   clearTimeout(saveTimer);saveTimer=setTimeout(persist,400);
+  }
+ });
+},{passive:true});
+function renderProfileForm(){
+ const p=P();
+ $('pName').value=p.name;$('pLeft').value=p.leftLabel;$('pRight').value=p.rightLabel;$('pFormat').value=p.format;
+ $('pGrades').value=p.grades.join(', ');$('pDist').value=p.distances.join(', ');
+ $('stageInfo').textContent=`${p.name} a ${p.stages.length} spéciale(s). Spéciale affichée : ${S().name} (${S().notes.length} notes).`;
+ $('annList').innerHTML=data.annotations.length?data.annotations.map((a,i)=>`<span class="annItem">${esc(a)}<button type="button" data-del-ann="${i}" aria-label="Supprimer">✕</button></span>`).join(''):'<span class="muted">Aucune annotation perso pour l\'instant.</span>';
+}
+function renderAll(){fix();renderSelects();renderKeys();renderNotes();renderProfileForm();updateSplitInfo()}
+
+/* ---- Saisie des notes ---- */
+let draftParts=[],selectedSide='G';
+let draftInk=null;
+function renderDraft(){
+ const t=draftParts.join(' · ');
+ $('draft').innerHTML=(t||draftInk)?`<span>${esc(t)}</span>${inkSvg(draftInk)}`:'<span class="muted">Ta note apparaîtra ici…</span>';
+}
+function addDraftPart(v){draftParts.push(v);renderDraft()}
+function chooseSide(side){selectedSide=side;$('leftSelect').classList.toggle('primary',side==='G');$('rightSelect').classList.toggle('primary',side==='D')}
+$('leftSelect').onclick=()=>chooseSide('G');
+$('rightSelect').onclick=()=>chooseSide('D');
+$('undoDraft').onclick=()=>{draftParts.pop();renderDraft()};
+$('clearDraft').onclick=()=>{draftParts=[];draftInk=null;renderDraft()};
+$('drawBtn').onclick=()=>openDraftDrawing();
+$('saveDraft').onclick=()=>{
+ const parts=[...draftParts],comment=$('noteText').value.trim();
+ if(comment)parts.push(comment);
+ if(!parts.length&&!draftInk)return;
+ const note={text:parts.join(' · ')};if(draftInk)note.ink=draftInk;
+ S().notes.push(note);
+ draftParts=[];draftInk=null;$('noteText').value='';renderDraft();persist();renderNotes();renderProfileForm();
+};
+$('noteText').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('saveDraft').click()}});
+function addAnnotation(v){
+ const label=(v||'').trim();if(!label)return false;
+ const all=[...BASE_ANN.map(a=>a[0]),...data.annotations].map(x=>x.toLowerCase());
+ if(all.includes(label.toLowerCase()))return false;
+ data.annotations.push(label);persist();renderKeys();renderProfileForm();return true;
+}
+function editNote(i){
+ const s=S(),note=s.notes[i];if(!note)return;
+ const btns=[['Annuler','',closeModal]];
+ if(note.mark)btns.push(['Retirer ⚑ '+note.mark,'',()=>{delete note.mark;persist();renderNotes();closeModal()}]);
+ btns.push(['Supprimer la note','danger',()=>{if(confirm('Supprimer cette note ?')){s.notes.splice(i,1);if(s.pos>i)s.pos--;persist();renderNotes();renderProfileForm();closeModal()}}]);
+ btns.push(['Enregistrer','primary',()=>{
+  const t=$('mText').value.trim(),ink=strokes.length?clone(strokes):null;
+  if(!t&&!ink)return alert('La note est vide : utilise « Supprimer la note ».');
+  note.text=t;if(ink)note.ink=ink;else delete note.ink;
+  persist();renderNotes();closeModal();
+ }]);
+ openModal('Modifier la note '+(i+1),note.text,note.ink,btns);
+}
+
+/* ---- Dessin au stylet ----
+   Les traits sont gardés sous forme de points (léger, net à toute taille)
+   dans un repère de 1000 × 350, puis affichés en SVG recadré sur le dessin. */
+const PW=1000,PH=350;
+function inkSvg(ink){
+ if(!Array.isArray(ink)||!ink.length)return '';
+ let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;
+ ink.forEach(st=>{for(let k=0;k<st.p.length;k+=2){x0=Math.min(x0,st.p[k]);x1=Math.max(x1,st.p[k]);y0=Math.min(y0,st.p[k+1]);y1=Math.max(y1,st.p[k+1])}});
+ const m=10;x0-=m;y0-=m;x1+=m;y1+=m;const w=Math.max(x1-x0,20),h=Math.max(y1-y0,20);
+ const paths=ink.map(st=>{let d='M'+st.p[0]+' '+st.p[1];for(let k=2;k<st.p.length;k+=2)d+='L'+st.p[k]+' '+st.p[k+1];if(st.p.length===2)d+='l.1 0';return `<path d="${d}" stroke="${esc(st.c)}" stroke-width="${st.w}"/>`}).join('');
+ return `<svg class="ink" viewBox="${x0} ${y0} ${w} ${h}" style="aspect-ratio:${w}/${h}" fill="none" stroke-linecap="round" stroke-linejoin="round" aria-label="dessin">${paths}</svg>`;
+}
+let strokes=[],curStroke=null,penColor='#f8fafc',penSeen=false;
+const pad=$('pad'),pctx=pad.getContext('2d');
+function sizePad(){
+ const w=$('padWrap').clientWidth,h=Math.round(w*PH/PW),dpr=window.devicePixelRatio||1;
+ pad.style.height=h+'px';pad.width=Math.round(w*dpr);pad.height=Math.round(h*dpr);drawPad();
+}
+function drawPad(){
+ const k=pad.width/PW;pctx.setTransform(1,0,0,1,0,0);pctx.clearRect(0,0,pad.width,pad.height);
+ pctx.setTransform(k,0,0,k,0,0);pctx.lineCap='round';pctx.lineJoin='round';
+ strokes.forEach(st=>{pctx.strokeStyle=st.c;pctx.lineWidth=st.w;pctx.beginPath();pctx.moveTo(st.p[0],st.p[1]);for(let i=2;i<st.p.length;i+=2)pctx.lineTo(st.p[i],st.p[i+1]);if(st.p.length===2)pctx.lineTo(st.p[0]+.1,st.p[1]);pctx.stroke()});
+ $('padHint').style.display=strokes.length?'none':'';
+}
+function padPoint(e){const r=pad.getBoundingClientRect();return[Math.round((e.clientX-r.left)/r.width*PW),Math.round((e.clientY-r.top)/r.height*PH)]}
+pad.addEventListener('pointerdown',e=>{
+ if(e.pointerType==='pen')penSeen=true;
+ if(penSeen&&e.pointerType==='touch')return; /* main posée sur l'écran ignorée quand on utilise le stylet */
+ e.preventDefault();pad.setPointerCapture(e.pointerId);
+ curStroke={c:penColor,w:11,p:padPoint(e)};strokes.push(curStroke);drawPad();
+});
+pad.addEventListener('pointermove',e=>{
+ if(!curStroke||!pad.hasPointerCapture(e.pointerId))return;
+ const evs=e.getCoalescedEvents?e.getCoalescedEvents():[e];
+ evs.forEach(ev=>{const[x,y]=padPoint(ev),p=curStroke.p,n=p.length;if(Math.abs(p[n-2]-x)+Math.abs(p[n-1]-y)>=2)p.push(x,y)});
+ drawPad();
+});
+['pointerup','pointercancel'].forEach(t=>pad.addEventListener(t,()=>{curStroke=null}));
+document.querySelectorAll('[data-col]').forEach(b=>b.onclick=()=>{penColor=b.dataset.col;document.querySelectorAll('[data-col]').forEach(x=>x.classList.toggle('sel',x===b))});
+$('padUndo').onclick=()=>{strokes.pop();drawPad()};
+$('padClear').onclick=()=>{strokes=[];drawPad()};
+function openModal(title,text,ink,btns){
+ $('mTitle').textContent=title;
+ $('mText').classList.toggle('hidden',text===null);$('mText').value=text||'';
+ strokes=Array.isArray(ink)?clone(ink):[];
+ $('mBtns').innerHTML='';
+ btns.forEach(([label,cls,fn])=>{const b=document.createElement('button');b.type='button';b.textContent=label;if(cls)b.className=cls;b.onclick=fn;$('mBtns').appendChild(b)});
+ $('modal').classList.remove('hidden');sizePad();
+}
+function closeModal(){$('modal').classList.add('hidden');strokes=[]}
+function openDraftDrawing(){
+ openModal('Dessin pour la note en cours',null,draftInk,[
+  ['Annuler','',closeModal],
+  ['Valider le dessin','primary',()=>{draftInk=strokes.length?clone(strokes):null;closeModal();renderDraft()}]
+ ]);
+}
+window.addEventListener('resize',()=>{if(!$('modal').classList.contains('hidden'))sizePad()});
+
+/* ---- Clics (délégation) ---- */
+document.addEventListener('click',e=>{
+ let b;
+ if(b=e.target.closest('[data-distance]'))return addDraftPart(b.dataset.distance);
+ if(b=e.target.closest('[data-grade]'))return addDraftPart(turnLabel(selectedSide,b.dataset.grade));
+ if(b=e.target.closest('[data-ann]'))return addDraftPart(b.dataset.ann);
+ if(e.target.closest('#newAnnotation')){const v=prompt('Nouvelle annotation (pour tous les pilotes) :');if(v&&!addAnnotation(v))alert('Cette annotation existe déjà.');return}
+ if(b=e.target.closest('[data-edit-note]'))return editNote(Number(b.dataset.editNote));
+ if(b=e.target.closest('[data-goto]')){S().pos=Number(b.dataset.goto);persist();renderReader(true);return}
+ if(b=e.target.closest('[data-mark]')){
+  const s=S(),note=s.notes[s.pos];
+  if(!note)return alert('Aucune note en cours.');
+  note.mark=b.dataset.mark;persist();renderNotes();return;
+ }
+ if(b=e.target.closest('[data-del-ann]')){const i=Number(b.dataset.delAnn);if(confirm('Supprimer l\'annotation « '+data.annotations[i]+' » ?')){data.annotations.splice(i,1);persist();renderKeys();renderProfileForm()}return}
+});
+
+/* ---- Onglets ---- */
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{
+ document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('active',x===b));
+ ['reco','speciale','profils'].forEach(id=>$(id).classList.toggle('hidden',id!==b.dataset.tab));
+ if(b.dataset.tab==='speciale')renderReader(false);
+ if(b.dataset.tab==='reco')renderNotes();
+ if(b.dataset.tab==='profils')renderProfileForm();
+});
+$('profileSelect').onchange=e=>{data.curProfile=Number(e.target.value);draftParts=[];renderDraft();persist();renderAll()};
+$('stageSelect').onchange=e=>{P().cur=Number(e.target.value);persist();renderAll()};
+
+/* ---- Lecture en spéciale ---- */
+function move(d){const s=S();if(!s.notes.length)return;s.pos=Math.max(0,Math.min(s.notes.length-1,s.pos+d));persist();renderReader(true)}
+$('nextBtn').onclick=()=>move(1);
+$('prevBtn').onclick=()=>move(-1);
+document.addEventListener('keydown',e=>{
+ if(e.target.matches('input,select,textarea')||$('speciale').classList.contains('hidden'))return;
+ if(['ArrowDown','ArrowRight','PageDown',' '].includes(e.key)){e.preventDefault();move(1)}
+ else if(['ArrowUp','ArrowLeft','PageUp'].includes(e.key)){e.preventDefault();move(-1)}
+});
+
+/* ---- Chrono en bandeau ---- */
+let elapsed=0,startedAt=0,iv=null,lastSplit=null,km=0,totalKm=0;
+function fmt(ms){const t=Math.floor(ms/100),d=t%10,s=Math.floor(t/10)%60,m=Math.floor(t/600);return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')+'.'+d}
+const current=()=>elapsed+(iv?Date.now()-startedAt:0);
+function updateTimer(){$('timer').textContent=fmt(current())}
+function updateSplitInfo(){
+ const ref=S().prevSplit;
+ if(lastSplit==null){$('splitInfo').innerHTML='Inter. --:--.-'+(ref?'<br><span class="muted">Réf. '+fmt(ref)+'</span>':'');return}
+ let h='Inter. '+fmt(lastSplit);
+ if(ref){const d=lastSplit-ref;h+='<br>'+(d<0?'<span class="ahead">−'+fmt(-d)+' en avance</span>':d>0?'<span class="late">+'+fmt(d)+' en retard</span>':'Même temps')}
+ else h+='<br><span class="muted">1er passage</span>';
+ $('splitInfo').innerHTML=h;
+}
+$('startStop').onclick=()=>{
+ if(!iv){startedAt=Date.now();iv=setInterval(updateTimer,50);$('startStop').textContent='■ Stop';$('startStop').classList.add('running')}
+ else{
+  elapsed=current();clearInterval(iv);iv=null;updateTimer();$('startStop').textContent='▶ Reprendre';$('startStop').classList.remove('running');
+  if(lastSplit!=null&&confirm('Mémoriser l\'intermédiaire '+fmt(lastSplit)+' comme référence pour « '+S().name+' » ?')){S().prevSplit=lastSplit;persist()}
+ }
+};
+$('takeSplit').onclick=()=>{if(!iv&&!elapsed)return;lastSplit=current();updateSplitInfo()};
+$('reset').onclick=()=>{if(iv)clearInterval(iv);iv=null;elapsed=0;lastSplit=null;km=0;updateTimer();updateKm();updateSplitInfo();$('startStop').textContent='▶ Départ';$('startStop').classList.remove('running')};
+function updateKm(){$('kmDisplay').textContent=km.toFixed(1)+' / '+(totalKm?totalKm.toFixed(1):'–')+' km'}
+$('kmDisplay').onclick=()=>{const v=prompt('Longueur de la spéciale (km) :',totalKm||'');if(v!==null){totalKm=Math.max(0,Number(String(v).replace(',','.'))||0);km=Math.min(km,totalKm||km);updateKm()}};
+$('kmPlus').onclick=()=>{km=Math.min(totalKm||999,Math.round((km+.1)*10)/10);updateKm()};
+$('kmMinus').onclick=()=>{km=Math.max(0,Math.round((km-.1)*10)/10);updateKm()};
+
+/* ---- Profils pilotes ---- */
+const parseList=v=>v.split(/[,;]/).map(x=>x.trim()).filter(Boolean);
+$('saveProfile').onclick=()=>{
+ const p=P(),g=parseList($('pGrades').value),d=parseList($('pDist').value);
+ if(!g.length||!d.length)return alert('Il faut au moins un degré et une distance.');
+ p.name=$('pName').value.trim()||p.name;p.leftLabel=$('pLeft').value.trim()||'G';p.rightLabel=$('pRight').value.trim()||'D';
+ p.format=$('pFormat').value;p.grades=g;p.distances=d;
+ persist();renderAll();alert('Profil « '+p.name+' » enregistré.');
+};
+$('addProfile').onclick=()=>{const n=prompt('Nom du nouveau pilote :');if(!n||!n.trim())return;data.profiles.push(newProfile(n.trim()));data.curProfile=data.profiles.length-1;persist();renderAll()};
+$('dupProfile').onclick=()=>{const n=prompt('Nom du nouveau pilote (reprend les réglages de '+P().name+', sans les notes) :');if(!n||!n.trim())return;const q=newProfile(n.trim());['leftLabel','rightLabel','format','grades','distances'].forEach(k=>q[k]=clone(P()[k]));data.profiles.push(q);data.curProfile=data.profiles.length-1;persist();renderAll()};
+$('delProfile').onclick=()=>{if(data.profiles.length<2)return alert('Il faut garder au moins un pilote.');if(!confirm('Supprimer le pilote « '+P().name+' » et TOUTES ses notes ?'))return;data.profiles.splice(data.curProfile,1);data.curProfile=0;persist();renderAll()};
+
+/* ---- Spéciales ---- */
+$('addStage').onclick=()=>{const n=prompt('Nom de la spéciale :','Spéciale '+(P().stages.length+1));if(!n||!n.trim())return;P().stages.push(newStage(n.trim()));P().cur=P().stages.length-1;lastSplit=null;persist();renderAll()};
+$('renameStage').onclick=()=>{const n=prompt('Nouveau nom :',S().name);if(n&&n.trim()){S().name=n.trim();persist();renderAll()}};
+$('clearNotes').onclick=()=>{if(confirm('Vider toutes les notes de « '+S().name+' » ?')){S().notes=[];S().pos=0;persist();renderAll()}};
+$('delStage').onclick=()=>{if(!confirm('Supprimer la spéciale « '+S().name+' » et ses notes ?'))return;P().stages.splice(P().cur,1);P().cur=0;persist();renderAll()};
+
+/* ---- Annotations communes ---- */
+$('annAdd').onclick=()=>{if(addAnnotation($('annInput').value))$('annInput').value='';else if($('annInput').value.trim())alert('Cette annotation existe déjà.')};
+
+/* ---- Sauvegarde ---- */
+$('exportBtn').onclick=()=>{
+ const blob=new Blob([JSON.stringify({app:'RALLYE NOTE',version:2,date:new Date().toISOString(),...data},null,1)],{type:'application/json'});
+ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='rallye-note-'+new Date().toISOString().slice(0,10)+'.json';
+ document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000);
+};
+$('importBtn').onclick=()=>$('importFile').click();
+$('importFile').onchange=async e=>{
+ const f=e.target.files[0];e.target.value='';if(!f)return;
+ try{
+  const obj=JSON.parse(await f.text());
+  if(!obj||!Array.isArray(obj.profiles))throw 0;
+  const added=obj.profiles.map(cleanProfile);
+  added.forEach(q=>{let base=q.name,k=2;while(data.profiles.some(p=>p.name===q.name))q.name=base+' ('+(k++)+')'});
+  data.profiles.push(...added);
+  (obj.annotations||[]).forEach(a=>{if(typeof a==='string')addAnnotation(a)});
+  persist();renderAll();alert(added.length+' pilote(s) importé(s).');
+ }catch(err){alert('Fichier non reconnu. Choisis un fichier exporté par RALLYE NOTE.')}
+};
+$('shareBtn').onclick=async()=>{
+ const s=S(),text=P().name+' — '+s.name+'\n'+s.notes.map((n,i)=>(i+1)+'. '+(n.text||'')+(n.ink?' [dessin]':'')+(n.mark?' [⚑ '+n.mark+']':'')).join('\n');
+ try{if(navigator.share)return await navigator.share({title:'RALLYE NOTE — '+s.name,text})}catch(e){if(e&&e.name==='AbortError')return}
+ try{await navigator.clipboard.writeText(text);alert('Notes copiées dans le presse-papiers.')}catch(e){prompt('Copie ces notes :',text)}
+};
+
+/* ---- Écran toujours allumé ---- */
+let wl=null;
+async function keepAwake(){try{if('wakeLock' in navigator&&!wl&&document.visibilityState==='visible'){wl=await navigator.wakeLock.request('screen');wl.addEventListener('release',()=>{wl=null})}}catch(e){}}
+document.addEventListener('visibilitychange',keepAwake);
+document.addEventListener('click',keepAwake,{once:true});
+
+/* Demande au navigateur de ne pas effacer les données (stockage persistant) */
+try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
+
+/* Application installable : fonctionne hors connexion une fois installée */
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+persist();renderAll();renderDraft();updateTimer();updateKm();keepAwake();
+</script>
+</body>
+</html>
