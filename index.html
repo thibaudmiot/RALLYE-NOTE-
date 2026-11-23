@@ -77,6 +77,7 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
 #readList svg.ink{height:2em}
 #draft{display:flex;align-items:center;gap:8px}
 .bigSym{font-size:1.6em;font-weight:900;line-height:.8;vertical-align:-.12em}
+#readList .note.current .bigSym{font-size:1.3em;vertical-align:-.06em}
 #annotationKeys .bigSym,.annRow .bigSym{font-size:1em;line-height:inherit;vertical-align:baseline}
 #draft svg.ink{height:1.3em}
 #modal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:50;display:flex;align-items:center;justify-content:center;padding:10px}
@@ -120,6 +121,11 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
 .note small{font-size:13px;color:var(--muted)}
 .note .edit{padding:7px 10px;font-size:14px}
 .navRow{display:grid;grid-template-columns:1fr 2fr;gap:6px}
+/* Boutons de défilement : colonne verticale à droite de la liste */
+#readWrap{min-height:0;display:grid;grid-template-columns:minmax(0,1fr) clamp(78px,13vw,130px);gap:6px}
+#navCol{display:grid;grid-template-rows:1fr 2fr;gap:6px;min-height:0}
+#navCol button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:4px;font-size:clamp(26px,5vw,44px);font-weight:900;line-height:1}
+#navCol button span{font-size:clamp(13px,2.2vw,20px);font-weight:800}
 .navRow button{min-height:58px;font-size:19px}
 #markKeys{display:grid;grid-template-columns:repeat(4,1fr);gap:4px}
 #markKeys button{min-height:38px;padding:4px;font-size:13px}
@@ -185,8 +191,6 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
 }
 /* Paysage tablette : note en cours à gauche, liste à droite */
 @media (min-width:1000px) and (min-height:600px) and (orientation:landscape){
- #speciale .ctrl{display:grid;grid-template-columns:3fr 2fr;gap:8px;align-items:stretch}
- #speciale .ctrl .navRow{margin:0!important}
  #reco>.panel{grid-template-columns:2fr 3fr;grid-template-rows:auto auto minmax(0,1fr) auto auto;column-gap:10px;
   grid-template-areas:"recent dist" "recent turn" "recent ann" "draft draft" "com save"}
  #recentBox{grid-area:recent}#draft{grid-area:draft}#distanceKeys{grid-area:dist}#turnKeys{grid-area:turn}
@@ -245,9 +249,11 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
    </div>
   </div>
   <div class="readHead"><h2 id="readTitle">Spéciale</h2><span class="pill" id="readPos">0 / 0</span></div>
-  <div id="readList"></div>
+  <div id="readWrap">
+   <div id="readList"></div>
+   <div id="navCol"><button id="prevBtn" aria-label="Note précédente">▲<span>Préc.</span></button><button class="primary" id="nextBtn" aria-label="Note suivante"><span>Suiv.</span>▼</button></div>
+  </div>
   <div class="ctrl">
-   <div class="navRow" style="margin-bottom:5px"><button id="prevBtn">◀ Préc.</button><button class="primary" id="nextBtn">Suivante ▶</button></div>
    <div id="markKeys"><button data-mark="SALE">SALE</button><button data-mark="PAS CORDE">PAS CORDE</button><button data-mark="CORDE">CORDE</button><button data-mark="À MODIFIER">À MODIFIER</button></div>
   </div>
  </div>
