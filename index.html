@@ -76,6 +76,8 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
 #recentNotes svg.ink{height:1.1em}
 #readList svg.ink{height:2em}
 #draft{display:flex;align-items:center;gap:8px}
+.bigSym{font-size:1.6em;font-weight:900;line-height:.8;vertical-align:-.12em}
+#annotationKeys .bigSym,.annRow .bigSym{font-size:1em;line-height:inherit;vertical-align:baseline}
 #draft svg.ink{height:1.3em}
 #modal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:50;display:flex;align-items:center;justify-content:center;padding:10px}
 #modal .sheet{background:var(--panel);border:1px solid #475569;border-radius:16px;padding:12px;width:100%;max-width:1000px;max-height:100%;overflow:auto}
@@ -349,7 +351,7 @@ const SYM={
  changement:['Changement','<path d="M3 8h16M15 4l4 4-4 4"/><path d="M21 16H5M9 12l-4 4 4 4"/>']
 };
 const symSvg=k=>`<svg class="sy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-label="${SYM[k][0]}">${SYM[k][1]}</svg>`;
-const rt=t=>esc(t).replace(/⟦(\w+)⟧/g,(m,k)=>SYM[k]?symSvg(k):m);          /* texte → affichage avec symboles */
+const rt=t=>esc(t).replace(/⟦(\w+)⟧/g,(m,k)=>SYM[k]?symSvg(k):m).replace(/↳|(^|\s)\/(?=\s|$)/g,(m,sp)=>m==='↳'?'<b class="bigSym">↳</b>':sp+'<b class="bigSym">/</b>');  /* « Pour » et « Sur » en plus grand */          /* texte → affichage avec symboles */
 const plain=t=>String(t).replace(/⟦(\w+)⟧/g,(m,k)=>SYM[k]?'['+SYM[k][0]+']':m); /* texte → partage */
 const DEFAULT_ANN=[['Y','Y'],['Carrefour','⟦carrefour⟧'],['Poteau','⟦poteau⟧'],['Arrière','AR'],['Attention','⟦attention⟧'],['Et','et'],['Maison','⟦maison⟧'],['Étroit','//'],['Chicane','Chicane'],['Tenir','Tenir'],['T','T'],['Glisse','⟦glisse⟧'],['Départ','Départ'],['Fly Finish','F.Finish'],['Ouvre','⟦ouvre⟧'],['Ferme','⟦ferme⟧'],
  ['Quitter','Qit'],['À fond','AFD'],['Pour','↳'],['Sur','/'],['Frein','FR'],['En frein','En FR'],['Fini frein','F.FR'],['Corde','C'],['Pas corde','⟦pascorde⟧'],['Sommet','⟦sommet⟧'],['Cuvette','⟦cuvette⟧'],['Pas extérieur','P.ext.'],['Tard','Tard.'],['Bref','Bref.'],['Jet','Jet'],['Changement','⟦changement⟧']].map(([l,v])=>({l,v}));
