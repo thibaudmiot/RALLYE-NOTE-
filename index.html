@@ -80,6 +80,8 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
 #readList .note.current .bigSym{font-size:1.3em;vertical-align:-.06em}
 #annotationKeys .bigSym,.annRow .bigSym{font-size:1em;line-height:inherit;vertical-align:baseline}
 #draft svg.ink{height:1.3em}
+#draft .editHint{margin-left:auto;font-size:.7em;opacity:.6}
+#draftEdit{flex:1;font:inherit;font-weight:900;padding:2px 6px;background:#fff;color:#0f1a2b;border-radius:8px;border:0}
 #modal{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:50;display:flex;align-items:center;justify-content:center;padding:10px}
 #modal .sheet{background:var(--panel);border:1px solid #475569;border-radius:16px;padding:12px;width:100%;max-width:1000px;max-height:100%;overflow:auto}
 #padWrap{background:#0b1424;border:2px dashed #475569;border-radius:12px;margin:8px 0;position:relative}
@@ -475,8 +477,21 @@ let draftParts=[],selectedSide='G';
 let draftInk=null;
 function renderDraft(){
  const t=draftParts.join(' · ');
- $('draft').innerHTML=(t||draftInk)?`<span>${rt(t)}</span>${inkSvg(draftInk)}`:'<span class="muted">Ta note apparaîtra ici…</span>';
+ $('draft').innerHTML=(t||draftInk)?`<span>${rt(t)}</span>${inkSvg(draftInk)}<span class="editHint">✎</span>`:'<span class="muted">Ta note apparaîtra ici…</span>';
 }
+/* Toucher la note en cours → la corriger au clavier (gauche → G, pexte → P.ext.… comme pour la dictée) */
+function editDraft(){
+ if($('draftEdit'))return;
+ const inp=document.createElement('input');
+ inp.id='draftEdit';inp.value=draftParts.join(' · ');inp.placeholder='Corrige la note…';inp.setAttribute('aria-label','Corriger la note en cours');
+ $('draft').innerHTML='';$('draft').appendChild(inp);$('draft').insertAdjacentHTML('beforeend',inkSvg(draftInk));
+ inp.focus();inp.setSelectionRange(inp.value.length,inp.value.length);
+ let done=false;
+ const commit=()=>{if(done)return;done=true;const v=inp.value.trim();draftParts=v?lexify(v):[];renderDraft()};
+ inp.addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();commit()}else if(e.key==='Escape'){done=true;renderDraft()}});
+ inp.addEventListener('blur',commit);
+}
+$('draft').addEventListener('click',e=>{if(!e.target.closest('#draftEdit'))editDraft()});
 function addDraftPart(v){draftParts.push(v);renderDraft()}
 function chooseSide(side){selectedSide=side;$('leftSelect').classList.toggle('primary',side==='G');$('rightSelect').classList.toggle('primary',side==='D')}
 $('leftSelect').onclick=()=>chooseSide('G');
@@ -838,7 +853,7 @@ $('micBtn').onclick=()=>{
   for(let k=0;k<r.length;k++){const t=r[k].transcript,res=parseVoice(t);if(!best||res.known>best.known){best=res;bestT=t}}
   if(!best.parts.length){voiceToast('Pas compris, réessaie.',2500);return}
   best.parts.forEach(v=>draftParts.push(v));renderDraft();
-  voiceToast('Entendu : « '+esc(bestT)+' »'+(best.save?' ✔ note validée':''),best.save?2500:4000);
+  voiceToast('Entendu : « '+esc(bestT)+' »'+(best.save?' ✔ note validée':'<br><small>Pas bon ? Touche la note pour la corriger.</small>'),best.save?2500:4000);
   if(best.save)$('saveDraft').click();
  };
  rec.onerror=e=>{
