@@ -64,7 +64,11 @@ svg.sy{height:1em;width:auto;vertical-align:-.13em;overflow:visible}
 #annotationKeys button{min-height:43px;padding:5px 3px;font-size:14px;border-radius:8px}
 #annotationKeys #newAnnotation{background:var(--accent);color:#111827}
 #noteText{padding:8px;font-size:14px}
-#saveBar{display:grid;grid-template-columns:1fr 1fr 1.2fr 2fr;gap:5px}
+#saveBar{display:grid;grid-template-columns:1fr 1fr 1.2fr 1.3fr 2fr;gap:5px}
+#micBtn.on{background:var(--red);color:#fff;animation:pulse 1s infinite}
+@keyframes pulse{50%{opacity:.6}}
+#voiceToast{position:fixed;left:50%;top:8px;transform:translateX(-50%);z-index:60;max-width:94%;background:#0f1a2b;border:2px solid var(--accent);border-radius:12px;padding:8px 14px;font-size:17px;font-weight:700;box-shadow:0 4px 18px rgba(0,0,0,.5)}
+.vwRow{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #334155}.vwRow span{flex:1}.vwRow button{padding:6px 10px}
 #drawBtn{background:#334f7a}
 /* Dessins au stylet */
 svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
@@ -218,7 +222,7 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
   </div>
   <div id="annotationKeys"></div>
   <div class="row"><input id="noteText" placeholder="Commentaire facultatif…" aria-label="Commentaire facultatif"></div>
-  <div id="saveBar"><button id="undoDraft">Annuler</button><button id="clearDraft">Effacer</button><button id="drawBtn">✍ Dessin</button><button class="primary" id="saveDraft">VALIDER LA NOTE</button></div>
+  <div id="saveBar"><button id="undoDraft">Annuler</button><button id="clearDraft">Effacer</button><button id="drawBtn">✍ Dessin</button><button id="micBtn" type="button">🎤 Dicter</button><button class="primary" id="saveDraft">VALIDER LA NOTE</button></div>
  </div>
 </section>
 
@@ -293,6 +297,13 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
   <div class="btnGrid"><button class="primary" id="annAdd">Ajouter l'annotation</button><button id="annReset">Rétablir la liste de base</button></div>
  </div>
  <div class="panel">
+  <h2>Dictée vocale : mes mots</h2>
+  <p class="hint">Le bouton 🎤 Dicter reconnaît déjà les noms de tes annotations, « gauche / droite + degré » et les distances. Ajoute ici les mots que la dictée comprend mal ou tes mots à toi (ex. quand je dis « pexte », écrire « P.ext. »).</p>
+  <div id="vwList" style="margin-top:6px"></div>
+  <div class="row"><div><label for="vwSaid">Quand je dis…</label><input id="vwSaid" placeholder="ex. pexte"></div><div><label for="vwWrite">…écrire dans la note</label><input id="vwWrite" placeholder="ex. P.ext."></div></div>
+  <div class="btnGrid"><button class="primary" id="vwAdd" style="grid-column:1/-1">Ajouter ce mot</button></div>
+ </div>
+ <div class="panel">
   <h2>Sauvegarde</h2>
   <p class="hint">Les données restent dans ce navigateur. Exporte régulièrement un fichier de sauvegarde (tous les pilotes et toutes les spéciales).</p>
   <div class="btnGrid">
@@ -305,6 +316,7 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
 </section>
 
 </main>
+<div id="voiceToast" class="hidden"></div>
 <div id="modal" class="hidden"><div class="sheet">
  <h2 id="mTitle">Dessin</h2>
  <input id="mText" placeholder="Texte de la note">
@@ -448,7 +460,7 @@ function renderProfileForm(){
  $('stageInfo').textContent=`${p.name} a ${p.stages.length} spéciale(s). Spéciale affichée : ${S().name} (${S().notes.length} notes).`;
  $('annList').innerHTML=data.annList.map((a,i)=>`<div class="annRow" data-row="${i}"><span class="handle" aria-label="Déplacer">☰</span><span class="prev">${rt(a.v)}</span><span>${esc(a.l)}</span><button type="button" data-ann-up="${i}" aria-label="Monter">▲</button><button type="button" data-ann-down="${i}" aria-label="Descendre">▼</button><button type="button" class="del" data-del-ann="${i}" aria-label="Supprimer">✕</button></div>`).join('')||'<p class="muted">Aucune annotation.</p>';
 }
-function renderAll(){fix();renderSelects();renderKeys();renderNotes();renderProfileForm();updateSplitInfo()}
+function renderAll(){fix();renderSelects();renderKeys();renderNotes();renderProfileForm();renderVoiceWords();updateSplitInfo()}
 
 /* ---- Saisie des notes ---- */
 let draftParts=[],selectedSide='G';
@@ -661,6 +673,147 @@ $('annList').addEventListener('pointermove',e=>{
 ['pointerup','pointercancel'].forEach(t=>$('annList').addEventListener(t,()=>{if(dragI===null)return;dragI=null;persist();renderKeys();renderProfileForm()}));
 $('annReset').onclick=()=>{if(confirm('Remplacer la liste actuelle par la liste de base ?')){data.annList=clone(DEFAULT_ANN);persist();renderKeys();renderProfileForm()}};
 
+/* ---- Dictée vocale ----
+   Le bouton 🎤 écoute une note, la traduit dans le lexique de l'appli
+   (annotations, gauche/droite du pilote, degrés, distances, mots perso)
+   et l'ajoute à la note en cours. Dire « valider » à la fin enregistre la note. */
+data.voiceWords=Array.isArray(data.voiceWords)?data.voiceWords:[];
+function vNorm(t){return String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/(\d)([a-z])/g,'$1 $2').replace(/([a-z])(\d)/g,'$1 $2').replace(/[^a-z0-9]+/g,' ').trim()}
+/* Façons dont la dictée entend souvent les annotations de base (nom du bouton → ce qu'on peut dire) */
+const VOICE_ALIAS={
+ 'Pas extérieur':['pexte','pext','pextes','p ext','pe ext','pe exte','pas ext','pas exterieur'],
+ 'Y':['i grec','igrec','y grec'],
+ 'T':['te','the','tee'],
+ 'Quitter':['quitte','quittez','qit','kit'],
+ 'À fond':['afd','a fond','a fonds'],
+ 'Fly Finish':['fly finish','flying finish','flaille finish','fly finich','finish'],
+ 'Fini frein':['finit frein','finis frein','fini frein','fin frein'],
+ 'En frein':['en frein','en freins'],
+ 'Frein':['freins'],
+ 'Corde':['cordes'],
+ 'Pas corde':['pas cordes','pas de corde'],
+ 'Arrière':['arriere','en arriere'],
+ 'Étroit':['etroit','etroite'],
+ 'Tard':['tard','tare'],
+ 'Changement':['changement de direction'],
+ 'Départ':['depart']
+};
+const SIDE={gauche:'G',droite:'D',droit:'D'};
+const UNIT=new Set(['m','metre','metres','metre','metres']);
+const FILLER=new Set(['euh','heu','hum','bon','alors']);
+const NUMW={zero:0,un:1,une:1,deux:2,trois:3,quatre:4,cinq:5,six:6,sept:7,huit:8,neuf:9,dix:10,onze:11,douze:12,treize:13,quatorze:14,quinze:15,seize:16,vingt:20,vingts:20,trente:30,quarante:40,cinquante:50,soixante:60};
+/* Lit un nombre écrit en chiffres ou en lettres à partir de tok[i] → {n,len} */
+function readNum(tok,i){
+ if(/^\d+$/.test(tok[i]||''))return{n:Number(tok[i]),len:1};
+ let total=0,cur=0,j=i,any=false;
+ while(j<tok.length){
+  const w=tok[j];
+  if(w==='quatre'&&/^vingts?$/.test(tok[j+1]||'')){cur+=80;j+=2;any=true;continue}
+  if(w==='et'&&any&&(tok[j+1]==='un'||tok[j+1]==='onze')){j++;continue}
+  if(w in NUMW){cur+=NUMW[w];j++;any=true;continue}
+  if(w==='cent'||w==='cents'){cur=(cur||1)*100;j++;any=true;continue}
+  if(w==='mille'){total+=(cur||1)*1000;cur=0;j++;any=true;continue}
+  break;
+ }
+ return any?{n:total+cur,len:j-i}:null;
+}
+/* Dictionnaire : expression dite (mots normalisés) → texte à écrire */
+function voiceDict(){
+ const d=new Map(),put=(said,v)=>{const k=vNorm(said);if(k&&!d.has(k))d.set(k,v)};
+ data.voiceWords.forEach(w=>put(w.s,w.v));                    /* mots perso d'abord */
+ data.annList.forEach(a=>{
+  if(vNorm(a.l).length>1)put(a.l,a.v);                         /* nom du bouton */
+  (VOICE_ALIAS[a.l]||[]).forEach(x=>put(x,a.v));
+  if(!/⟦/.test(a.v)&&vNorm(a.v).length>2)put(a.v,a.v);          /* ex. « Chicane », « Jet » */
+ });
+ return d;
+}
+function sameNum(a,n){const m=vNorm(a).match(/^(\d+)/);return m&&Number(m[1])===n}
+function gradeAt(tok,i){
+ const p=P();
+ const r=readNum(tok,i);
+ if(r){const g=p.grades.find(g=>vNorm(g)===String(r.n))||String(r.n);return{g,len:r.len}}
+ for(const g of p.grades){const k=vNorm(g).split(' ');if(k[0]&&k.every((w,x)=>tok[i+x]===w))return{g,len:k.length}}
+ return null;
+}
+/* Traduit la phrase dictée en morceaux de note */
+function parseVoice(text){
+ const raw=String(text).toLowerCase().replace(/œ/g,'oe').replace(/æ/g,'ae').replace(/(\d)(\p{L})/gu,'$1 $2').replace(/(\p{L})(\d)/gu,'$1 $2').split(/[^\p{L}\d]+/u).map(w=>[w,vNorm(w)]).filter(([w,n])=>n&&!FILLER.has(n));
+ const tok=raw.map(x=>x[1]),orig=raw.map(x=>x[0]);
+ const dict=voiceDict(),p=P(),parts=[];let known=0,free=[],save=false;
+ const degreeFirst=/^4/.test(p.format);
+ const flush=()=>{if(free.length){parts.push(free.join(' '));free=[]}};
+ const push=v=>{flush();parts.push(v);known++};
+ if(/^valid/.test(tok[tok.length-1]||'')){save=true;tok.pop();orig.pop()}
+ for(let i=0;i<tok.length;){
+  /* 1. expression du lexique (la plus longue possible) */
+  let hit=null;
+  for(let L=Math.min(5,tok.length-i);L>0&&!hit;L--){const k=tok.slice(i,i+L).join(' ');if(dict.has(k))hit={v:dict.get(k),len:L}}
+  /* 2. gauche / droite + degré */
+  if(!hit&&SIDE[tok[i]]){
+   const side=SIDE[tok[i]],g=gradeAt(tok,i+1);
+   hit=g?{v:turnLabel(side,g.g),len:1+g.len}:{v:side==='G'?p.leftLabel:p.rightLabel,len:1};
+  }
+  /* 3. nombre : degré avant le sens (format 4G), sinon distance */
+  if(!hit){
+   const r=readNum(tok,i);
+   if(r){
+    const nx=tok[i+r.len];
+    if(degreeFirst&&SIDE[nx]){const g=p.grades.find(g=>vNorm(g)===String(r.n))||String(r.n);hit={v:turnLabel(SIDE[nx],g),len:r.len+1}}
+    else{let len=r.len;if(UNIT.has(nx))len++;hit={v:p.distances.find(d=>sameNum(d,r.n))||String(r.n),len}}
+   }
+  }
+  if(hit){push(hit.v);i+=hit.len}else{free.push(orig[i]);i++}
+ }
+ flush();
+ return{parts,known,save};
+}
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let rec=null,toastT=null;
+function voiceToast(msg,ms){const t=$('voiceToast');t.innerHTML=msg;t.classList.remove('hidden');clearTimeout(toastT);if(ms)toastT=setTimeout(()=>t.classList.add('hidden'),ms)}
+function micState(on){$('micBtn').classList.toggle('on',on);$('micBtn').textContent=on?'● Écoute…':'🎤 Dicter'}
+$('micBtn').onclick=()=>{
+ if(!SR)return alert('La dictée n\'est pas disponible dans ce navigateur. Ouvre RALLYE NOTE avec Chrome, ou utilise le micro du clavier dans le champ Commentaire.');
+ if(rec){rec.stop();return}
+ rec=new SR();rec.lang='fr-FR';rec.interimResults=true;rec.continuous=false;rec.maxAlternatives=5;
+ let done=false;
+ rec.onstart=()=>{micState(true);voiceToast('🎤 Je t\'écoute…')};
+ rec.onresult=e=>{
+  const r=e.results[e.results.length-1];
+  if(!r.isFinal){voiceToast('🎤 '+esc(r[0].transcript));return}
+  done=true;
+  /* garde la version qui colle le mieux au lexique */
+  let best=null,bestT='';
+  for(let k=0;k<r.length;k++){const t=r[k].transcript,res=parseVoice(t);if(!best||res.known>best.known){best=res;bestT=t}}
+  if(!best.parts.length){voiceToast('Pas compris, réessaie.',2500);return}
+  best.parts.forEach(v=>draftParts.push(v));renderDraft();
+  voiceToast('Entendu : « '+esc(bestT)+' »'+(best.save?' ✔ note validée':''),best.save?2500:4000);
+  if(best.save)$('saveDraft').click();
+ };
+ rec.onerror=e=>{
+  const m={'not-allowed':'Le micro est bloqué. Autorise le micro pour RALLYE NOTE dans les paramètres du site (Chrome).',
+   'service-not-allowed':'Le micro est bloqué. Autorise le micro pour RALLYE NOTE dans les paramètres du site (Chrome).',
+   'network':'Pas de réseau : sur cette tablette la dictée de l\'appli a besoin d\'internet. Utilise le micro du clavier dans le champ Commentaire.',
+   'audio-capture':'Aucun micro trouvé. Vérifie que le casque est bien connecté.',
+   'language-not-supported':'Le français n\'est pas disponible pour la dictée sur cette tablette.'}[e.error];
+  if(m){done=true;voiceToast(m,6000)}
+ };
+ rec.onend=()=>{rec=null;micState(false);if(!done)voiceToast('Rien entendu.',2000)};
+ try{rec.start()}catch(err){rec=null;micState(false)}
+};
+/* Mots perso de la dictée */
+function renderVoiceWords(){
+ $('vwList').innerHTML=data.voiceWords.map((w,i)=>`<div class="vwRow"><span>« ${esc(w.s)} »</span><span>→ <b>${rt(w.v)}</b></span><button type="button" class="del" data-del-vw="${i}" aria-label="Supprimer">✕</button></div>`).join('')||'<p class="muted">Aucun mot perso pour l\'instant.</p>';
+}
+$('vwAdd').onclick=()=>{
+ const s=$('vwSaid').value.trim(),v=$('vwWrite').value.trim();
+ if(!s||!v)return alert('Remplis les deux cases.');
+ const i=data.voiceWords.findIndex(x=>vNorm(x.s)===vNorm(s));
+ if(i>=0)data.voiceWords[i].v=v;else data.voiceWords.push({s,v});
+ $('vwSaid').value='';$('vwWrite').value='';persist();renderVoiceWords();
+};
+$('vwList').addEventListener('click',e=>{const b=e.target.closest('[data-del-vw]');if(!b)return;data.voiceWords.splice(Number(b.dataset.delVw),1);persist();renderVoiceWords()});
+
 /* ---- Sauvegarde ---- */
 $('exportBtn').onclick=()=>{
  const blob=new Blob([JSON.stringify({app:'RALLYE NOTE',version:2,date:new Date().toISOString(),...data},null,1)],{type:'application/json'});
@@ -677,6 +830,7 @@ $('importFile').onchange=async e=>{
   added.forEach(q=>{let base=q.name,k=2;while(data.profiles.some(p=>p.name===q.name))q.name=base+' ('+(k++)+')'});
   data.profiles.push(...added);
   (obj.annotations||[]).forEach(a=>{if(typeof a==='string')addAnnotation(a,a)});
+  (obj.voiceWords||[]).forEach(w=>{if(w&&typeof w.s==='string'&&typeof w.v==='string'&&!data.voiceWords.some(x=>vNorm(x.s)===vNorm(w.s)))data.voiceWords.push({s:w.s,v:w.v})});
   (obj.annList||[]).forEach(a=>{if(a&&typeof a.l==='string'&&typeof a.v==='string'&&!data.annList.some(x=>x.v===a.v))addAnnotation(a.l,a.v)});
   persist();renderAll();alert(added.length+' pilote(s) importé(s).');
  }catch(err){alert('Fichier non reconnu. Choisis un fichier exporté par RALLYE NOTE.')}
