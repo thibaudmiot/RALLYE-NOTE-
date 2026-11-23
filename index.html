@@ -306,7 +306,7 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
  </div>
  <div class="panel">
   <h2>Dictée vocale : mes mots</h2>
-  <p class="hint">Le bouton 🎤 Dicter reconnaît déjà les noms de tes annotations, « gauche / droite + degré » et les distances. Ajoute ici les mots que la dictée comprend mal ou tes mots à toi (ex. quand je dis « pexte », écrire « P.ext. »).</p>
+  <p class="hint">Le bouton 🎤 Dicter (et aussi le micro du clavier dans le champ Commentaire) reconnaît déjà les noms de tes annotations, « gauche / droite + degré » (écrits G / D selon le pilote) et les distances. Ajoute ici les mots que la dictée comprend mal ou tes mots à toi (ex. quand je dis « pexte », écrire « P.ext. »).</p>
   <div id="vwList" style="margin-top:6px"></div>
   <div class="row"><div><label for="vwSaid">Quand je dis…</label><input id="vwSaid" placeholder="ex. pexte"></div><div><label for="vwWrite">…écrire dans la note</label><input id="vwWrite" placeholder="ex. P.ext."></div></div>
   <div class="btnGrid"><button class="primary" id="vwAdd" style="grid-column:1/-1">Ajouter ce mot</button></div>
@@ -486,12 +486,13 @@ $('clearDraft').onclick=()=>{draftParts=[];draftInk=null;renderDraft()};
 $('drawBtn').onclick=()=>openDraftDrawing();
 $('saveDraft').onclick=()=>{
  const parts=[...draftParts],comment=$('noteText').value.trim();
- if(comment)parts.push(comment);
+ if(comment)parts.push(...lexify(comment));   /* gauche → G, droite 4 → D4, pexte → P.ext.… */
  if(!parts.length&&!draftInk)return;
  const note={text:parts.join(' · ')};if(draftInk)note.ink=draftInk;
  S().notes.push(note);
  draftParts=[];draftInk=null;$('noteText').value='';renderDraft();persist();renderNotes();renderProfileForm();
 };
+$('noteText').addEventListener('change',()=>{const v=$('noteText').value.trim();if(v)$('noteText').value=lexify(v).join(' · ')});
 $('noteText').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();$('saveDraft').click()}});
 function addAnnotation(label,value){
  label=(label||'').trim();value=(value||label).trim();if(!label||!value)return false;
@@ -504,7 +505,7 @@ function editNote(i){
  if(note.mark)btns.push(['Retirer ⚑ '+note.mark,'',()=>{delete note.mark;persist();renderNotes();closeModal()}]);
  btns.push(['Supprimer la note','danger',()=>{if(confirm('Supprimer cette note ?')){s.notes.splice(i,1);if(s.pos>i)s.pos--;persist();renderNotes();renderProfileForm();closeModal()}}]);
  btns.push(['Enregistrer','primary',()=>{
-  const t=$('mText').value.trim(),ink=strokes.length?clone(strokes):null;
+  const t=lexify($('mText').value.trim()).join(' · '),ink=strokes.length?clone(strokes):null;
   if(!t&&!ink)return alert('La note est vide : utilise « Supprimer la note ».');
   note.text=t;if(ink)note.ink=ink;else delete note.ink;
   persist();renderNotes();closeModal();
@@ -706,7 +707,14 @@ const VOICE_ALIAS={
  'Changement':['changement de direction'],
  'Départ':['depart']
 };
-const SIDE={gauche:'G',droite:'D',droit:'D'};
+const SIDE={gauche:'G',gauches:'G',droite:'D',droites:'D',droit:'D',droits:'D'};
+/* Sens à la position i : « gauche », « à gauche », « au droit »… ou une lettre g/d collée à un nombre (« G4 ») */
+function sideAt(tok,i){
+ let j=i;if((tok[j]==='a'||tok[j]==='au')&&SIDE[tok[j+1]])j++;
+ if(SIDE[tok[j]])return{side:SIDE[tok[j]],len:j-i+1};
+ if((tok[i]==='g'||tok[i]==='d')&&readNum(tok,i+1))return{side:tok[i].toUpperCase(),len:1};
+ return null;
+}
 const UNIT=new Set(['m','metre','metres','metre','metres']);
 const FILLER=new Set(['euh','heu','hum','bon','alors']);
 const NUMW={zero:0,un:1,une:1,deux:2,trois:3,quatre:4,cinq:5,six:6,sept:7,huit:8,neuf:9,dix:10,onze:11,douze:12,treize:13,quatorze:14,quinze:15,seize:16,vingt:20,vingts:20,trente:30,quarante:40,cinquante:50,soixante:60};
@@ -744,37 +752,72 @@ function gradeAt(tok,i){
  for(const g of p.grades){const k=vNorm(g).split(' ');if(k[0]&&k.every((w,x)=>tok[i+x]===w))return{g,len:k.length}}
  return null;
 }
+/* Reconnaît un élément du lexique à la position i → {v,len} ou null */
+function matchAt(tok,i,dict,p,strict){
+ /* 1. expression du lexique (la plus longue possible) */
+ for(let L=Math.min(5,tok.length-i);L>0;L--){const k=tok.slice(i,i+L).join(' ');if(dict.has(k))return{v:dict.get(k),len:L}}
+ /* 2. gauche / droite + degré */
+ const sd=sideAt(tok,i);
+ if(sd){
+  const g=gradeAt(tok,i+sd.len);
+  return g?{v:turnLabel(sd.side,g.g),len:sd.len+g.len}:{v:sd.side==='G'?p.leftLabel:p.rightLabel,len:sd.len};
+ }
+ /* 3. nombre : degré avant le sens (format 4G), sinon distance */
+ const r=readNum(tok,i);
+ if(r){
+  const t=tok[i+r.len],nx=SIDE[t]||((t==='g'||t==='d')&&t.toUpperCase());
+  if(/^4/.test(p.format)&&nx){const g=p.grades.find(g=>vNorm(g)===String(r.n))||String(r.n);return{v:turnLabel(nx,g),len:r.len+1}}
+  const unit=UNIT.has(t),dist=p.distances.find(d=>sameNum(d,r.n));
+  if(strict&&!unit&&!dist)return null;   /* texte tapé : un nombre seul reste dans la phrase */
+  return{v:dist||String(r.n),len:r.len+(unit?1:0)};
+ }
+ return null;
+}
 /* Traduit la phrase dictée en morceaux de note */
 function parseVoice(text){
  const raw=String(text).toLowerCase().replace(/œ/g,'oe').replace(/æ/g,'ae').replace(/(\d)(\p{L})/gu,'$1 $2').replace(/(\p{L})(\d)/gu,'$1 $2').split(/[^\p{L}\d]+/u).map(w=>[w,vNorm(w)]).filter(([w,n])=>n&&!FILLER.has(n));
  const tok=raw.map(x=>x[1]),orig=raw.map(x=>x[0]);
  const dict=voiceDict(),p=P(),parts=[];let known=0,free=[],save=false;
- const degreeFirst=/^4/.test(p.format);
  const flush=()=>{if(free.length){parts.push(free.join(' '));free=[]}};
  const push=v=>{flush();parts.push(v);known++};
  if(/^valid/.test(tok[tok.length-1]||'')){save=true;tok.pop();orig.pop()}
  for(let i=0;i<tok.length;){
-  /* 1. expression du lexique (la plus longue possible) */
-  let hit=null;
-  for(let L=Math.min(5,tok.length-i);L>0&&!hit;L--){const k=tok.slice(i,i+L).join(' ');if(dict.has(k))hit={v:dict.get(k),len:L}}
-  /* 2. gauche / droite + degré */
-  if(!hit&&SIDE[tok[i]]){
-   const side=SIDE[tok[i]],g=gradeAt(tok,i+1);
-   hit=g?{v:turnLabel(side,g.g),len:1+g.len}:{v:side==='G'?p.leftLabel:p.rightLabel,len:1};
-  }
-  /* 3. nombre : degré avant le sens (format 4G), sinon distance */
-  if(!hit){
-   const r=readNum(tok,i);
-   if(r){
-    const nx=tok[i+r.len];
-    if(degreeFirst&&SIDE[nx]){const g=p.grades.find(g=>vNorm(g)===String(r.n))||String(r.n);hit={v:turnLabel(SIDE[nx],g),len:r.len+1}}
-    else{let len=r.len;if(UNIT.has(nx))len++;hit={v:p.distances.find(d=>sameNum(d,r.n))||String(r.n),len}}
-   }
-  }
+  const hit=matchAt(tok,i,dict,p);
   if(hit){push(hit.v);i+=hit.len}else{free.push(orig[i]);i++}
  }
  flush();
  return{parts,known,save};
+}
+/* Même traduction pour du texte tapé ou dicté au clavier (champ Commentaire, modification d'une note).
+   Ce qui est déjà au format de l'appli (D4, P.ext., ⟦maison⟧, /, ↳…) reste tel quel. */
+const LEX_SKIP=new Set(['te','the','tee','tare','kit','quitte','quittez','finish']); /* mots courants : seulement au micro de l'appli */
+function lexify(text){
+ const dict=voiceDict(),p=P(),parts=[];
+ LEX_SKIP.forEach(k=>dict.delete(k));
+ String(text).split('·').forEach(seg=>{
+  const chunks=seg.trim().split(/\s+/).filter(Boolean),W=[];
+  chunks.forEach((ch,c)=>{
+   const core=ch.replace(/[,;:!?]+$/,'');
+   const subs=core.split(/[-'’]/).filter(Boolean);
+   if(!subs.length||/[^\p{L}\d'’-]/u.test(core)||subs.some(x=>/\p{L}/u.test(x)&&/\d/.test(x)))W.push({n:'\u0000',o:ch,c});
+   else subs.forEach(x=>W.push({n:vNorm(x.replace(/œ/g,'oe').replace(/æ/g,'ae'))||'\u0000',o:x,c}));
+  });
+  const tok=W.map(w=>w.n),hits=[],touched=new Set();
+  for(let i=0;i<tok.length;){
+   const h=tok[i]==='\u0000'?null:matchAt(tok,i,dict,p,true);
+   if(h){hits[i]=h;for(let k=i;k<i+h.len;k++)touched.add(W[k].c);i+=h.len}else i++;
+  }
+  let free=[];const flush=()=>{if(free.length){parts.push(free.join(' '));free=[]}};
+  for(let i=0;i<W.length;){
+   if(hits[i]){flush();parts.push(hits[i].v);i+=hits[i].len;continue}
+   const w=W[i];
+   if(!touched.has(w.c)){if(i===0||W[i-1].c!==w.c)free.push(chunks[w.c].replace(/[,;:]+$/,''))}  /* mot intact, tel qu'écrit */
+   else free.push(w.o);
+   i++;
+  }
+  flush();
+ });
+ return parts;
 }
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 let rec=null,toastT=null;
