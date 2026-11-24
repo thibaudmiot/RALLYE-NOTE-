@@ -383,7 +383,7 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
 </div></div>
 <script>
 const $=id=>document.getElementById(id);
-const APP_VERSION='v15';  /* à changer en même temps que CACHE dans sw.js */
+const APP_VERSION='v15';  /* changer ce numéro suffit : la copie hors connexion (sw.js) suit toute seule */
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 /* Symboles dessinés (comme dans le carnet). Dans une note, ils s'écrivent ⟦nom⟧. */
 const SYM={
@@ -1171,7 +1171,7 @@ try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}
 /* Application installable : fonctionne hors connexion une fois installée */
 if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
  const hadSW=!!navigator.serviceWorker.controller;
- navigator.serviceWorker.register('sw.js').catch(()=>{});
+ navigator.serviceWorker.register('sw.js?v='+APP_VERSION).catch(()=>{});
  /* Nouvelle version téléchargée : on prévient (les notes ne sont pas touchées) */
  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(hadSW)voiceToast('🔄 Nouvelle version de RALLYE NOTE installée.<br><button type="button" onclick="location.reload()">Recharger maintenant</button>')});
 }

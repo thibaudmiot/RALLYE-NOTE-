@@ -1,6 +1,6 @@
 /* RALLYE NOTE — fonctionnement hors connexion.
-   À chaque nouvelle version : changer CACHE ici ET APP_VERSION dans index.html. */
-const CACHE = 'rallye-note-v15';
+   Rien à changer ici : le numéro de version vient d'APP_VERSION dans index.html (sw.js?v=…). */
+const CACHE = 'rallye-note-' + (new URL(location.href).searchParams.get('v') || 'base');
 const FILES = [
   './',
   './index.html',
