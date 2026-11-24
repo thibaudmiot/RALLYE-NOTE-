@@ -383,7 +383,7 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
 </div></div>
 <script>
 const $=id=>document.getElementById(id);
-const APP_VERSION='v14';  /* à changer en même temps que CACHE dans sw.js */
+const APP_VERSION='v15';  /* à changer en même temps que CACHE dans sw.js */
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 /* Symboles dessinés (comme dans le carnet). Dans une note, ils s'écrivent ⟦nom⟧. */
 const SYM={
@@ -918,16 +918,22 @@ const VOICE_ALIAS={
  'Changement':['changement de direction'],
  'Départ':['depart']
 };
+/* Mots reconnus à la dictée même sans bouton d'annotation (texte écrit → ce que la dictée peut entendre) */
+const VOICE_BUILTIN={
+ 'Gué':['gue','gues','gay','gai','guet','guets','ghe']
+};
 const SIDE={gauche:'G',gauches:'G',goche:'G',gauch:'G',droite:'D',droites:'D',droit:'D',droits:'D',droitte:'D',adroite:'D',adroit:'D'};
 let lexStrict=false;   /* vrai pendant la traduction du texte tapé : on n'y devine pas les mots mal entendus */
 /* Mots que la dictée entend parfois à la place de gauche / droite : comptés comme un sens SEULEMENT s'ils sont suivis d'un chiffre */
 const SIDE_WEAK={go:'G',gosh:'G',goch:'G',gaucher:'G',gauchet:'G',goshe:'G',gauge:'G',gauches:'G',endroit:'D',endroits:'D',doigt:'D',doigts:'D',droites:'D',troite:'D',droie:'D',drouate:'D',droip:'D',adroit:'D'};
 /* Chiffres de virage souvent mal entendus juste après gauche / droite */
-const GRADE_WEAK={deu:2,toi:3,troie:3,trois:3,cat:4,quatres:4,catre:4,katr:4,saint:5,sein:5,sain:5,sinq:5,cinque:5,sis:6,cis:6,scie:6,six:6,cette:7,set:7,sept:7};
+const GRADE_WEAK={dis:10,di:10,dit:10,dice:10,deu:2,toi:3,troie:3,trois:3,cat:4,quatres:4,catre:4,katr:4,saint:5,sein:5,sain:5,sinq:5,cinque:5,sis:6,cis:6,scie:6,six:6,cette:7,set:7,sept:7};
 /* Sens à la position i : « gauche », « à gauche », « au droit »… ou une lettre g/d collée à un nombre (« G4 ») */
 function sideAt(tok,i){
  let j=i;if((tok[j]==='a'||tok[j]==='au'||tok[j]==='la')&&(SIDE[tok[j+1]]||SIDE_WEAK[tok[j+1]]))j++;
  if(SIDE[tok[j]])return{side:SIDE[tok[j]],len:j-i+1};
+ /* « go je dis », « go che 3 » : gauche entendu en deux mots */
+ if(!lexStrict&&/^(go|gau|gaut|gos)$/.test(tok[j])&&/^(je|che|ch|chez|che)$/.test(tok[j+1]||'')&&(readNum(tok,j+2)||GRADE_WEAK[tok[j+2]]))return{side:'G',len:j-i+2};
  if(SIDE_WEAK[tok[j]]&&(readNum(tok,j+1)||(!lexStrict&&GRADE_WEAK[tok[j+1]])))return{side:SIDE_WEAK[tok[j]],len:j-i+1};
  if((tok[i]==='g'||tok[i]==='d')&&readNum(tok,i+1))return{side:tok[i].toUpperCase(),len:1};
  return null;
@@ -954,6 +960,7 @@ function readNum(tok,i){
 function voiceDict(){
  const d=new Map(),put=(said,v)=>{const k=vNorm(said);if(k&&!d.has(k))d.set(k,v)};
  data.voiceWords.forEach(w=>put(w.s,w.v));                    /* mots perso d'abord */
+ Object.entries(VOICE_BUILTIN).forEach(([v,l])=>l.forEach(x=>put(x,v)));
  data.annList.forEach(a=>{
   if(vNorm(a.l).length>1)put(a.l,a.v);                         /* nom du bouton */
   (VOICE_ALIAS[a.l]||[]).forEach(x=>put(x,a.v));
@@ -1009,7 +1016,7 @@ function parseVoice(text){
 }
 /* Même traduction pour du texte tapé ou dicté au clavier (champ Commentaire, modification d'une note).
    Ce qui est déjà au format de l'appli (D4, P.ext., ⟦maison⟧, /, ↳…) reste tel quel. */
-const LEX_SKIP=new Set(['te','the','tee','tare','kit','quitte','quittez','finish']); /* mots courants : seulement au micro de l'appli */
+const LEX_SKIP=new Set(['te','the','tee','tare','kit','quitte','quittez','finish','gay','gai','guet','guets']); /* mots courants : seulement au micro de l'appli */
 function lexify(text){
  const dict=voiceDict(),p=P(),parts=[];
  LEX_SKIP.forEach(k=>dict.delete(k));
