@@ -65,6 +65,7 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:700;margin:8px
 #annotationKeys button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;line-height:1.05;overflow:hidden}
 #annotationKeys .sym{font-size:1.3em;font-weight:900;white-space:nowrap}
 #annotationKeys small{font-size:.78em;font-weight:700;opacity:.95;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+i.sp{display:inline-block;width:.3em}
 svg.sy{height:1em;width:auto;vertical-align:-.13em;overflow:visible}
 #annotationKeys .sym svg.sy{height:1.35em}
 .annRow{display:grid;grid-template-columns:44px minmax(70px,max-content) 1fr auto auto auto auto;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid #334155}
@@ -382,7 +383,7 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
 </div></div>
 <script>
 const $=id=>document.getElementById(id);
-const APP_VERSION='v12';  /* à changer en même temps que CACHE dans sw.js */
+const APP_VERSION='v13';  /* à changer en même temps que CACHE dans sw.js */
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 /* Symboles dessinés (comme dans le carnet). Dans une note, ils s'écrivent ⟦nom⟧. */
 const SYM={
@@ -399,8 +400,8 @@ const SYM={
  changement:['Changement','<path d="M3 8h16M15 4l4 4-4 4"/><path d="M21 16H5M9 12l-4 4 4 4"/>']
 };
 const symSvg=k=>`<svg class="sy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-label="${SYM[k][0]}">${SYM[k][1]}</svg>`;
-const rt=t=>esc(t).replace(/⟦(\w+)⟧/g,(m,k)=>SYM[k]?symSvg(k):m).replace(/↳|(^|\s)\/(?=\s|$)/g,(m,sp)=>m==='↳'?'<b class="bigSym">↳</b>':sp+'<b class="bigSym">/</b>');  /* « Pour » et « Sur » en plus grand */          /* texte → affichage avec symboles */
-const plain=t=>String(t).replace(/⟦(\w+)⟧/g,(m,k)=>SYM[k]?'['+SYM[k][0]+']':m); /* texte → partage */
+const rt=t=>esc(t).replace(/\s*·\s*/g,' <i class="sp"></i>').replace(/⟦(\w+)⟧/g,(m,k)=>SYM[k]?symSvg(k):m).replace(/↳|(^|\s)\/(?=\s|$)/g,(m,sp)=>m==='↳'?'<b class="bigSym">↳</b>':sp+'<b class="bigSym">/</b>');  /* « Pour » et « Sur » en plus grand */          /* texte → affichage avec symboles */
+const plain=t=>String(t).replace(/\s*·\s*/g,'  ').replace(/⟦(\w+)⟧/g,(m,k)=>SYM[k]?'['+SYM[k][0]+']':m); /* texte → partage */
 const DEFAULT_ANN=[['Y','Y'],['Carrefour','⟦carrefour⟧'],['Poteau','⟦poteau⟧'],['Arrière','AR'],['Attention','⟦attention⟧'],['Et','et'],['Maison','⟦maison⟧'],['Étroit','//'],['Chicane','Chicane'],['Tenir','Tenir'],['T','T'],['Glisse','⟦glisse⟧'],['Départ','Départ'],['Fly Finish','F.Finish'],['Ouvre','⟦ouvre⟧'],['Ferme','⟦ferme⟧'],
  ['Quitter','Qit'],['À fond','AFD'],['Pour','↳'],['Sur','/'],['Frein','FR'],['En frein','En FR'],['Fini frein','F.FR'],['Corde','C'],['Pas corde','⟦pascorde⟧'],['Sommet','⟦sommet⟧'],['Cuvette','⟦cuvette⟧'],['Pas extérieur','P.ext.'],['Tard','Tard.'],['Bref','Bref.'],['Jet','Jet'],['Changement','⟦changement⟧']].map(([l,v])=>({l,v}));
 const DEF={leftLabel:'G',rightLabel:'D',format:'G4',grades:['1','2','3','4','5','6'],distances:['30 m','50 m','80 m','100 m','150 m','200 m','300 m','500 m']};
