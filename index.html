@@ -41,6 +41,18 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:700;margin:8px
 #recentBox .lbl{font-size:11px;color:var(--muted);font-weight:700;margin-bottom:3px}
 #recentNotes{flex:1;min-height:0;display:flex;flex-direction:column;justify-content:flex-end;gap:3px;font-size:24px;line-height:1.25;font-weight:800;overflow:hidden}
 #recentNotes>div{padding:3px 0;border-bottom:1px solid #334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#recentNotes>div[data-edit-note]{display:flex;align-items:center;gap:8px;cursor:pointer}
+#recentNotes .rtxt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+#recentNotes .rpen,#allList .rpen{flex:none;font-size:.6em;opacity:.55;font-weight:700}
+#recentBox .lbl{display:flex;justify-content:space-between;align-items:center;gap:8px}
+#allBtn{padding:4px 10px;font-size:12px;border-radius:8px}
+#allList .note{font-size:22px}
+#allList .note small{flex:none}
+#ver{font-size:11px;color:var(--muted);font-weight:700;flex:none}
+.hwChip{display:inline-flex;align-items:center;gap:6px;background:#334155;border-radius:99px;padding:3px 3px 3px 12px;margin:3px;font-weight:800;font-size:16px}
+.hwChip small{font-weight:600;color:var(--muted);font-size:12px}
+.hwChip button{padding:4px 9px;border-radius:99px;font-size:13px;background:#7f1d1d}
+#mBtns button.conv{background:#334f7a}
 #draft{min-height:44px;padding:6px 10px;border-radius:10px;background:#0f1a2b;border:2px solid var(--accent);font-size:21px;font-weight:900;overflow:hidden}
 #distanceKeys{display:grid;gap:4px}
 #distanceKeys button{min-height:47px;padding:6px 3px;font-size:16px}
@@ -210,6 +222,7 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
  <h1>🏁</h1>
  <select id="profileSelect" aria-label="Pilote"></select>
  <select id="stageSelect" aria-label="Spéciale"></select>
+ <span id="ver"></span>
 </header>
 <nav>
  <button class="active" data-tab="reco">Reconnaissance</button>
@@ -220,7 +233,7 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
 
 <section id="reco">
  <div class="panel">
-  <div id="recentBox"><div class="lbl">DERNIÈRES NOTES</div><div id="recentNotes"></div></div>
+  <div id="recentBox"><div class="lbl"><span>DERNIÈRES NOTES · touche une note pour la modifier</span><button type="button" id="allBtn">Toutes les notes</button></div><div id="recentNotes"></div></div>
   <div id="draft">Ta note apparaîtra ici…</div>
   <div id="distanceKeys"></div>
   <div id="turnKeys">
@@ -314,6 +327,15 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
   <div class="btnGrid"><button class="primary" id="vwAdd" style="grid-column:1/-1">Ajouter ce mot</button></div>
  </div>
  <div class="panel">
+  <h2>Écriture manuscrite → texte tapé</h2>
+  <p class="hint">L'appli apprend TON écriture, sans connexion. Écris quelques exemples de chaque chiffre, de G / D et de tes mots (ex. « corde », « pexte »). Ensuite, dans « ✍ Dessin » ou en modifiant une note, le bouton « 🔤 Convertir en texte » transforme le dessin en texte tapé. Laisse un petit espace entre les caractères, un plus grand entre les mots. Plus il y a d'exemples (3 par caractère, c'est bien), mieux ça marche.</p>
+  <div id="hwList" style="margin-top:6px"></div>
+  <div class="btnGrid">
+   <button class="primary" id="hwGuided">Entraînement guidé (chiffres, G, D)</button>
+   <button id="hwAddOne">Apprendre un caractère ou un mot</button>
+  </div>
+ </div>
+ <div class="panel">
   <h2>Sauvegarde</h2>
   <p class="hint">Les données restent dans ce navigateur. Exporte régulièrement un fichier de sauvegarde (tous les pilotes et toutes les spéciales).</p>
   <div class="btnGrid">
@@ -327,6 +349,11 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
 
 </main>
 <div id="voiceToast" class="hidden"></div>
+<div id="allModal" class="hidden" style="position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:45;display:flex;align-items:center;justify-content:center;padding:10px"><div class="sheet" style="background:var(--panel);border:1px solid #475569;border-radius:16px;padding:12px;width:100%;max-width:1000px;max-height:100%;display:flex;flex-direction:column">
+ <div class="readHead"><h2 id="allTitle">Toutes les notes</h2><button type="button" id="allClose">Fermer</button></div>
+ <p class="hint">Touche une note pour la modifier ou la supprimer.</p>
+ <div id="allList" style="overflow:auto;min-height:0;flex:1"></div>
+</div></div>
 <div id="modal" class="hidden"><div class="sheet">
  <h2 id="mTitle">Dessin</h2>
  <input id="mText" placeholder="Texte de la note">
@@ -343,6 +370,7 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
 </div></div>
 <script>
 const $=id=>document.getElementById(id);
+const APP_VERSION='v10';  /* à changer en même temps que CACHE dans sw.js */
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 /* Symboles dessinés (comme dans le carnet). Dans une note, ils s'écrivent ⟦nom⟧. */
 const SYM={
@@ -426,10 +454,22 @@ function renderKeys(){
 function renderNotes(){
  const s=S(),n=s.notes;
  const recent=n.slice(-12),box=$('recentNotes');
- box.innerHTML=recent.length?recent.map(x=>`<div>${rt(x.text)} ${inkSvg(x.ink)}</div>`).join(''):'<div class="muted" style="border:0">Les dernières notes apparaîtront ici.</div>';
+ const off=n.length-recent.length;
+ box.innerHTML=recent.length?recent.map((x,k)=>`<div data-edit-note="${off+k}"><span class="rtxt">${rt(x.text)} ${inkSvg(x.ink)}${x.mark?' <span class="flag">⚑ '+esc(x.mark)+'</span>':''}</span><span class="rpen">${off+k+1} ✎</span></div>`).join(''):'<div class="muted" style="border:0">Les dernières notes apparaîtront ici.</div>';
+ $('allBtn').textContent='Toutes les notes ('+n.length+')';
  fitRecent();
  renderReader();
+ if(!$('allModal').classList.contains('hidden'))renderAllNotes();
 }
+/* Liste complète des notes de la spéciale (onglet Reconnaissance) : toucher une note pour la modifier */
+function renderAllNotes(){
+ const s=S(),n=s.notes;
+ $('allTitle').textContent='Toutes les notes · '+s.name+' ('+n.length+')';
+ $('allList').innerHTML=n.length?n.map((x,i)=>`<div class="note" data-edit-note="${i}"><span class="ntxt"><span>${rt(x.text)}</span>${inkSvg(x.ink)}${x.mark?'<span class="flag">⚑ '+esc(x.mark)+'</span>':''}</span><small>${i+1} ✎</small></div>`).join(''):'<p class="muted">Aucune note.</p>';
+}
+function openAllNotes(){renderAllNotes();$('allModal').classList.remove('hidden');const l=$('allList');l.scrollTop=l.scrollHeight}
+$('allBtn').onclick=e=>{e.stopPropagation();openAllNotes()};
+$('allClose').onclick=()=>$('allModal').classList.add('hidden');
 /* Affiche autant de dernières notes que la place le permet (sans ligne coupée) */
 function fitRecent(){const b=$('recentNotes');if(!b.offsetParent)return;while(b.children.length>1&&b.scrollHeight>b.clientHeight+1)b.firstElementChild.remove()}
 window.addEventListener('resize',()=>{renderNotes();renderReader()});
@@ -470,7 +510,7 @@ function renderProfileForm(){
  $('stageInfo').textContent=`${p.name} a ${p.stages.length} spéciale(s). Spéciale affichée : ${S().name} (${S().notes.length} notes).`;
  $('annList').innerHTML=data.annList.map((a,i)=>`<div class="annRow" data-row="${i}"><span class="handle" aria-label="Déplacer">☰</span><span class="prev">${rt(a.v)}</span><span>${esc(a.l)}</span><button type="button" data-ann-up="${i}" aria-label="Monter">▲</button><button type="button" data-ann-down="${i}" aria-label="Descendre">▼</button><button type="button" class="del" data-del-ann="${i}" aria-label="Supprimer">✕</button></div>`).join('')||'<p class="muted">Aucune annotation.</p>';
 }
-function renderAll(){fix();renderSelects();renderKeys();renderNotes();renderProfileForm();renderVoiceWords();updateSplitInfo()}
+function renderAll(){fix();renderSelects();renderKeys();renderNotes();renderProfileForm();renderVoiceWords();renderHw();updateSplitInfo()}
 
 /* ---- Saisie des notes ---- */
 let draftParts=[],selectedSide='G';
@@ -518,6 +558,12 @@ function editNote(i){
  const s=S(),note=s.notes[i];if(!note)return;
  const btns=[['Annuler','',closeModal]];
  if(note.mark)btns.push(['Retirer ⚑ '+note.mark,'',()=>{delete note.mark;persist();renderNotes();closeModal()}]);
+ btns.push(['🔤 Convertir le dessin en texte','conv',()=>{
+  const r=recognizeInk(strokes);if(r==null)return;
+  const t=[$('mText').value.trim(),r].filter(Boolean).join(' ');
+  $('mText').value=lexify(t).join(' · ');strokes=[];drawPad();
+  voiceToast('Lu : « '+esc(r)+' »<br><small>Pas bon ? Corrige le texte, ou touche « Annuler ».</small>',4000);
+ }]);
  btns.push(['Supprimer la note','danger',()=>{if(confirm('Supprimer cette note ?')){s.notes.splice(i,1);if(s.pos>i)s.pos--;persist();renderNotes();renderProfileForm();closeModal()}}]);
  btns.push(['Enregistrer','primary',()=>{
   const t=lexify($('mText').value.trim()).join(' · '),ink=strokes.length?clone(strokes):null;
@@ -581,9 +627,106 @@ function closeModal(){$('modal').classList.add('hidden');strokes=[]}
 function openDraftDrawing(){
  openModal('Dessin pour la note en cours',null,draftInk,[
   ['Annuler','',closeModal],
+  ['🔤 Convertir en texte','conv',()=>{
+   const r=recognizeInk(strokes);if(r==null)return;
+   draftParts.push(...lexify(r));draftInk=null;closeModal();renderDraft();
+   voiceToast('Lu : « '+esc(r)+' »<br><small>Pas bon ? Touche la note pour la corriger.</small>',4000);
+  }],
   ['Valider le dessin','primary',()=>{draftInk=strokes.length?clone(strokes):null;closeModal();renderDraft()}]
  ]);
 }
+
+/* ---- Reconnaissance de l'écriture (hors connexion) ----
+   Méthode « $P » (nuage de points) : chaque groupe de traits est comparé aux modèles
+   que la copilote a écrits elle-même (data.hw). Les groupes sont séparés par les espaces
+   horizontaux entre les traits ; un grand espace = un espace entre deux mots. */
+data.hw=Array.isArray(data.hw)?data.hw.filter(h=>h&&typeof h.t==='string'&&Array.isArray(h.ink)):[];
+const NP=32;
+function hwCloud(strokes){
+ let pts=[];
+ strokes.forEach((p,id)=>{for(let k=0;k+1<p.length;k+=2)pts.push({x:p[k],y:p[k+1],id})});
+ if(!pts.length)return null;
+ let len=0;for(let i=1;i<pts.length;i++)if(pts[i].id===pts[i-1].id)len+=Math.hypot(pts[i].x-pts[i-1].x,pts[i].y-pts[i-1].y);
+ let out;
+ if(len<1e-6)out=Array.from({length:NP},()=>({...pts[0]}));
+ else{
+  const I=len/(NP-1);let D=0;out=[{...pts[0]}];const q=pts.map(p=>({...p}));
+  for(let i=1;i<q.length;i++){
+   if(q[i].id!==q[i-1].id)continue;
+   const d=Math.hypot(q[i].x-q[i-1].x,q[i].y-q[i-1].y);
+   if(D+d>=I&&d>0){const t=(I-D)/d,n={x:q[i-1].x+t*(q[i].x-q[i-1].x),y:q[i-1].y+t*(q[i].y-q[i-1].y),id:q[i].id};out.push(n);q.splice(i,0,n);D=0}
+   else D+=d;
+  }
+  while(out.length<NP)out.push({...q[q.length-1]});out.length=NP;
+ }
+ let x0=1e9,y0=1e9,x1=-1e9,y1=-1e9;out.forEach(p=>{x0=Math.min(x0,p.x);x1=Math.max(x1,p.x);y0=Math.min(y0,p.y);y1=Math.max(y1,p.y)});
+ const sc=Math.max(x1-x0,y1-y0)||1;
+ out.forEach(p=>{p.x=(p.x-x0)/sc;p.y=(p.y-y0)/sc});
+ const cx=out.reduce((a,p)=>a+p.x,0)/NP,cy=out.reduce((a,p)=>a+p.y,0)/NP;
+ out.forEach(p=>{p.x-=cx;p.y-=cy});
+ return out;
+}
+function cloudDist(a,b,start){
+ const used=new Array(NP).fill(false);let sum=0,i=start;
+ do{let m=Infinity,ix=-1;for(let j=0;j<NP;j++)if(!used[j]){const d=Math.hypot(a[i].x-b[j].x,a[i].y-b[j].y);if(d<m){m=d;ix=j}}
+  used[ix]=true;sum+=(1-((i-start+NP)%NP)/NP)*m;i=(i+1)%NP}while(i!==start);
+ return sum;
+}
+function cloudMatch(a,b){const step=Math.floor(Math.sqrt(NP));let m=Infinity;for(let i=0;i<NP;i+=step)m=Math.min(m,cloudDist(a,b,i),cloudDist(b,a,i));return m}
+/* Découpe le dessin en groupes de traits qui se chevauchent horizontalement */
+function hwGroups(ink){
+ const items=ink.filter(st=>st&&st.p&&st.p.length>=2).map(st=>{let a=1e9,b=-1e9,c=1e9,d=-1e9;for(let k=0;k<st.p.length;k+=2){a=Math.min(a,st.p[k]);b=Math.max(b,st.p[k]);c=Math.min(c,st.p[k+1]);d=Math.max(d,st.p[k+1])}return{p:st.p,x0:a,x1:b,y0:c,y1:d}}).sort((u,v)=>u.x0-v.x0);
+ const g=[];
+ items.forEach(it=>{const last=g[g.length-1];
+  if(last&&it.x0<=last.x1+6){last.s.push(it.p);last.x1=Math.max(last.x1,it.x1);last.y0=Math.min(last.y0,it.y0);last.y1=Math.max(last.y1,it.y1)}
+  else g.push({s:[it.p],x0:it.x0,x1:it.x1,y0:it.y0,y1:it.y1})});
+ return g;
+}
+let hwCache=null;
+function recognizeInk(ink){
+ if(!Array.isArray(ink)||!ink.length){alert('Écris d\'abord au stylet dans le cadre.');return null}
+ if(!data.hw.length){alert('L\'appli ne connaît pas encore ton écriture. Va dans « Pilotes & carnet » → « Écriture manuscrite » et fais l\'entraînement guidé (2 minutes).');return null}
+ if(!hwCache||hwCache.n!==data.hw.length)hwCache={n:data.hw.length,t:data.hw.map(h=>({t:h.t,c:hwCloud(h.ink)})).filter(h=>h.c)};
+ const g=hwGroups(ink);if(!g.length)return null;
+ const hs=g.map(x=>x.y1-x.y0).sort((a,b)=>a-b),hMed=Math.max(hs[Math.floor(hs.length/2)],40);
+ let out='';
+ g.forEach((x,i)=>{
+  const c=hwCloud(x.s);let best=null,bd=Infinity;
+  hwCache.t.forEach(h=>{const d=cloudMatch(c,h.c);if(d<bd){bd=d;best=h.t}});
+  if(i&&x.x0-g[i-1].x1>hMed*.45)out+=' ';
+  out+=best??'?';
+ });
+ return out.trim();
+}
+/* Modèles d'écriture : apprentissage */
+function hwSave(t,strokes){
+ const ink=strokes.filter(st=>st.p&&st.p.length).map(st=>st.p.slice());
+ if(!ink.length)return false;
+ data.hw.push({t,ink});hwCache=null;persist();renderHw();return true;
+}
+function renderHw(){
+ const cnt=new Map();data.hw.forEach(h=>cnt.set(h.t,(cnt.get(h.t)||0)+1));
+ $('hwList').innerHTML=cnt.size?[...cnt].map(([t,n])=>`<span class="hwChip">${esc(t)} <small>×${n}</small><button type="button" data-del-hw="${esc(t)}" aria-label="Oublier ${esc(t)}">✕</button></span>`).join(''):'<p class="muted">Aucun modèle pour l\'instant : commence par l\'entraînement guidé.</p>';
+}
+$('hwList').addEventListener('click',e=>{const b=e.target.closest('[data-del-hw]');if(!b)return;const t=b.dataset.delHw;if(confirm('Oublier tous les exemples de « '+t+' » ?')){data.hw=data.hw.filter(h=>h.t!==t);hwCache=null;persist();renderHw()}});
+function hwTrain(list,i){
+ if(i>=list.length){closeModal();renderHw();voiceToast('✔ Entraînement terminé. Essaie « 🔤 Convertir en texte » dans ✍ Dessin.',4000);return}
+ openModal('Écris : « '+list[i]+' »   ('+(i+1)+' / '+list.length+')',null,null,[
+  ['Arrêter','',()=>{closeModal();renderHw()}],
+  ['Passer','',()=>hwTrain(list,i+1)],
+  ['Suivant ✔','primary',()=>{if(!strokes.length)return alert('Écris « '+list[i]+' » dans le cadre.');hwSave(list[i],strokes);hwTrain(list,i+1)}]
+ ]);
+}
+$('hwGuided').onclick=()=>{
+ const base=['0','1','2','3','4','5','6','7','8','9',P().leftLabel,P().rightLabel];
+ hwTrain([...base,...base,...base],0);
+};
+$('hwAddOne').onclick=()=>{
+ const t=prompt('Quel caractère ou quel mot vas-tu écrire ?\n(ce qui doit apparaître en texte tapé, ex. « 4 », « corde », « P.ext. »)');
+ if(!t||!t.trim())return;
+ const w=t.trim();
+ hwTrain([w,w,w],0);
+};
 window.addEventListener('resize',()=>{if(!$('modal').classList.contains('hidden'))sizePad()});
 
 /* ---- Clics (délégation) ---- */
@@ -908,6 +1051,7 @@ $('importFile').onchange=async e=>{
   data.profiles.push(...added);
   (obj.annotations||[]).forEach(a=>{if(typeof a==='string')addAnnotation(a,a)});
   (obj.voiceWords||[]).forEach(w=>{if(w&&typeof w.s==='string'&&typeof w.v==='string'&&!data.voiceWords.some(x=>vNorm(x.s)===vNorm(w.s)))data.voiceWords.push({s:w.s,v:w.v})});
+  (obj.hw||[]).forEach(h=>{if(h&&typeof h.t==='string'&&Array.isArray(h.ink))data.hw.push({t:h.t,ink:h.ink})});hwCache=null;
   (obj.annList||[]).forEach(a=>{if(a&&typeof a.l==='string'&&typeof a.v==='string'&&!data.annList.some(x=>x.v===a.v))addAnnotation(a.l,a.v)});
   persist();renderAll();alert(added.length+' pilote(s) importé(s).');
  }catch(err){alert('Fichier non reconnu. Choisis un fichier exporté par RALLYE NOTE.')}
@@ -935,6 +1079,7 @@ if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(hadSW)voiceToast('🔄 Nouvelle version de RALLYE NOTE installée.<br><button type="button" onclick="location.reload()">Recharger maintenant</button>')});
 }
 
+$('ver').textContent=APP_VERSION;
 persist();renderAll();renderDraft();updateTimer();updateKm();keepAwake();
 </script>
 </body>
