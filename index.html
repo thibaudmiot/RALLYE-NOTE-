@@ -64,7 +64,7 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:700;margin:8px
 #annotationKeys{display:grid;grid-template-columns:repeat(8,minmax(0,1fr));gap:4px}
 #annotationKeys button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;line-height:1.05;overflow:hidden}
 #annotationKeys .sym{font-size:1.3em;font-weight:900;white-space:nowrap}
-#annotationKeys small{font-size:.66em;font-weight:600;opacity:.75;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+#annotationKeys small{font-size:.78em;font-weight:700;opacity:.95;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 svg.sy{height:1em;width:auto;vertical-align:-.13em;overflow:visible}
 #annotationKeys .sym svg.sy{height:1.35em}
 .annRow{display:grid;grid-template-columns:44px 70px 1fr auto auto auto;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid #334155}
@@ -75,6 +75,12 @@ svg.sy{height:1em;width:auto;vertical-align:-.13em;overflow:visible}
 .annRow.dragging{background:#1d3350;outline:2px solid var(--accent);border-radius:8px}
 #annotationKeys button{min-height:43px;padding:5px 3px;font-size:14px;border-radius:8px}
 #annotationKeys #newAnnotation{background:var(--accent);color:#111827}
+#annotationKeys button{border-left:5px solid transparent}
+#annotationKeys .fam-vit{background:#4a1d24;border-left-color:#ef4444}
+#annotationKeys .fam-traj{background:#17324f;border-left-color:#38bdf8}
+#annotationKeys .fam-dang{background:#3f3413;border-left-color:#f5b82e}
+#annotationKeys .fam-lien{background:#173a2a;border-left-color:#22c55e}
+#annotationKeys .fam-route{background:#2e2350;border-left-color:#a78bfa}
 #noteText{padding:8px;font-size:14px}
 #saveBar{display:grid;grid-template-columns:1fr 1fr 1.2fr 1.3fr 2fr;gap:5px}
 #micBtn.on{background:var(--red);color:#fff;animation:pulse 1s infinite}
@@ -129,6 +135,10 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
 #readList .note.current{font-size:calc(46px*var(--k));padding:12px 14px;margin:6px 0;opacity:1;border:5px solid var(--accent);background:#1d3350;box-shadow:0 0 0 3px rgba(245,184,46,.25)}
 #readList .note.next1{opacity:1;border-left-color:var(--accent)}
 #readList .note.ghost{visibility:hidden}
+.nlines{display:flex;flex-direction:column;gap:.08em;min-width:0}
+.nl{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nl.pour{padding-left:.7em}
+#readList .note.current .nl{white-space:normal}
 #readList .note:not(.current) .edit{display:none}
 .note{padding:10px 12px;border-radius:12px;background:#0f1a2b;margin:6px 0;border-left:6px solid #475569;font-size:24px;font-weight:800;display:flex;justify-content:space-between;align-items:center;gap:10px;cursor:pointer}
 .note.current{border-left-color:var(--accent);background:#1d3350}
@@ -324,15 +334,16 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
   <p class="hint">Le bouton 🎤 Dicter (et aussi le micro du clavier dans le champ Commentaire) reconnaît déjà les noms de tes annotations, « gauche / droite + degré » (écrits G / D selon le pilote) et les distances. Ajoute ici les mots que la dictée comprend mal ou tes mots à toi (ex. quand je dis « pexte », écrire « P.ext. »).</p>
   <div id="vwList" style="margin-top:6px"></div>
   <div class="row"><div><label for="vwSaid">Quand je dis…</label><input id="vwSaid" placeholder="ex. pexte"></div><div><label for="vwWrite">…écrire dans la note</label><input id="vwWrite" placeholder="ex. P.ext."></div></div>
-  <div class="btnGrid"><button class="primary" id="vwAdd" style="grid-column:1/-1">Ajouter ce mot</button></div>
+  <div class="btnGrid"><button class="primary" id="vwAdd" style="grid-column:1/-1">Ajouter ce mot</button><button id="vlShare" style="grid-column:1/-1">Envoyer le journal de dictée (pour améliorer la compréhension)</button></div>
  </div>
  <div class="panel">
   <h2>Écriture manuscrite → texte tapé</h2>
-  <p class="hint">L'appli apprend TON écriture, sans connexion. Écris quelques exemples de chaque chiffre, de G / D et de tes mots (ex. « corde », « pexte »). Ensuite, dans « ✍ Dessin » ou en modifiant une note, le bouton « 🔤 Convertir en texte » transforme le dessin en texte tapé. Laisse un petit espace entre les caractères, un plus grand entre les mots. Plus il y a d'exemples (3 par caractère, c'est bien), mieux ça marche.</p>
+  <p class="hint">L'appli apprend TON écriture, sans connexion. Écris quelques exemples de chaque chiffre, de G / D, puis de tes annotations comme tu les écris dans ton carnet (↳, AFd, FR, ⚠, glisse…). Ensuite, dans « ✍ Dessin » ou en modifiant une note, le bouton « 🔤 Convertir en texte » transforme le dessin en texte tapé. Laisse un petit espace entre les caractères, un plus grand entre les mots. Plus il y a d'exemples (3 par caractère, c'est bien), mieux ça marche.</p>
   <div id="hwList" style="margin-top:6px"></div>
   <div class="btnGrid">
    <button class="primary" id="hwGuided">Entraînement guidé (chiffres, G, D)</button>
-   <button id="hwAddOne">Apprendre un caractère ou un mot</button>
+   <button class="primary" id="hwAnn">Entraînement : annotations et symboles</button>
+   <button id="hwAddOne" style="grid-column:1/-1">Apprendre un caractère ou un mot</button>
   </div>
  </div>
  <div class="panel">
@@ -370,7 +381,7 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
 </div></div>
 <script>
 const $=id=>document.getElementById(id);
-const APP_VERSION='v10';  /* à changer en même temps que CACHE dans sw.js */
+const APP_VERSION='v11';  /* à changer en même temps que CACHE dans sw.js */
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 /* Symboles dessinés (comme dans le carnet). Dans une note, ils s'écrivent ⟦nom⟧. */
 const SYM={
@@ -439,6 +450,15 @@ function turnLabel(side,g){
  const L=side==='G'?P().leftLabel:P().rightLabel;
  switch(P().format){case '4G':return g+L;case 'G 4':return L+' '+g;case '4 G':return g+' '+L;default:return L+g}
 }
+/* Familles d'annotations : une couleur par famille pour les retrouver d'un coup d'œil */
+const FAM={
+ vit:['AFD','FR','En FR','F.FR','Tard.','Bref.','Tenir'],                                  /* vitesse / freinage : rouge */
+ traj:['C','⟦pascorde⟧','⟦ouvre⟧','⟦ferme⟧','P.ext.','Qit','Jet','//','Chicane'],           /* trajectoire : bleu */
+ dang:['⟦attention⟧','⟦glisse⟧','⟦sommet⟧','⟦cuvette⟧'],                                   /* danger / relief : jaune */
+ lien:['↳','/','et','⟦changement⟧'],                                                      /* liaisons : vert */
+ route:['Y','T','⟦carrefour⟧','⟦poteau⟧','⟦maison⟧','AR','Départ','F.Finish']              /* repères : violet */
+};
+const famOf=v=>Object.keys(FAM).find(k=>FAM[k].includes(v))||'perso';
 function renderKeys(){
  const p=P();
  $('distanceKeys').innerHTML=p.distances.map(d=>`<button type="button" data-distance="${esc(d)}">${esc(d)}</button>`).join('');
@@ -447,7 +467,7 @@ function renderKeys(){
  $('gradeKeys').style.gridTemplateColumns=`repeat(${Math.max(1,Math.min(p.grades.length,8))},minmax(0,1fr))`;
  $('leftSelect').textContent=p.leftLabel;$('rightSelect').textContent=p.rightLabel;
  $('leftSelect').classList.toggle('long',p.leftLabel.length>2);$('rightSelect').classList.toggle('long',p.rightLabel.length>2);
- $('annotationKeys').innerHTML=data.annList.map((a,i)=>`<button type="button" data-ann-i="${i}" aria-label="${esc(a.l)}"><span class="sym">${rt(a.v)}</span>${a.l.toLowerCase()!==a.v.toLowerCase()?'<small>'+esc(a.l)+'</small>':''}</button>`).join('')
+ $('annotationKeys').innerHTML=data.annList.map((a,i)=>`<button type="button" class="fam-${famOf(a.v)}" data-ann-i="${i}" aria-label="${esc(a.l)}"><span class="sym">${rt(a.v)}</span>${a.l.toLowerCase()!==a.v.toLowerCase()?'<small>'+esc(a.l)+'</small>':''}</button>`).join('')
   +'<button type="button" id="newAnnotation">＋ Perso</button>';
  chooseSide(selectedSide);
 }
@@ -474,7 +494,13 @@ $('allClose').onclick=()=>$('allModal').classList.add('hidden');
 function fitRecent(){const b=$('recentNotes');if(!b.offsetParent)return;while(b.children.length>1&&b.scrollHeight>b.clientHeight+1)b.firstElementChild.remove()}
 window.addEventListener('resize',()=>{renderNotes();renderReader()});
 const PREV=3,NEXT=5; /* notes passées / à venir affichées en spéciale */
-function noteRow(x,i,cls){return `<div class="note ${cls}" data-goto="${i}"><span class="ntxt"><span>${rt(x.text)}</span>${inkSvg(x.ink)}${x.mark?'<span class="flag">⚑ '+esc(x.mark)+'</span>':''}</span><span style="display:flex;gap:6px;align-items:center;flex-shrink:0"><small>${i+1}</small><button type="button" class="edit" data-edit-note="${i}" aria-label="Modifier la note ${i+1}">✎</button></span></div>`}
+/* En spéciale, chaque « Pour » (↳) commence une nouvelle ligne, en retrait (comme dans le carnet) */
+function noteLines(t){
+ const L=String(t).split(/\s*(?:·\s*)?(?=↳)/).map(l=>l.replace(/^\s*·\s*|\s*·\s*$/g,'').replace(/^↳\s*·\s*/,'↳ ').trim()).filter(Boolean);
+ if(L.length<2)return `<span>${rt(t)}</span>`;
+ return '<span class="nlines">'+L.map(l=>`<span class="nl${l.startsWith('↳')?' pour':''}">${rt(l)}</span>`).join('')+'</span>';
+}
+function noteRow(x,i,cls){return `<div class="note ${cls}" data-goto="${i}"><span class="ntxt">${noteLines(x.text)}${inkSvg(x.ink)}${x.mark?'<span class="flag">⚑ '+esc(x.mark)+'</span>':''}</span><span style="display:flex;gap:6px;align-items:center;flex-shrink:0"><small>${i+1}</small><button type="button" class="edit" data-edit-note="${i}" aria-label="Modifier la note ${i+1}">✎</button></span></div>`}
 function renderReader(){
  const s=S(),n=s.notes,list=$('readList');
  $('readTitle').textContent=P().name+' · '+s.name;
@@ -492,7 +518,11 @@ function renderReader(){
 function fitReader(){
  const list=$('readList');if(!list.offsetParent)return;
  let k=1;list.style.setProperty('--k',k);
- while(list.scrollHeight>list.clientHeight+1&&k>.45){k-=.05;list.style.setProperty('--k',k.toFixed(2))}
+ const over=()=>list.scrollHeight>list.clientHeight+1;
+ /* d'abord un peu plus petit, puis moins de notes à venir (les notes sur plusieurs lignes prennent de la place), puis encore plus petit */
+ while(over()&&k>.75){k-=.05;list.style.setProperty('--k',k.toFixed(2))}
+ while(over()){const last=list.lastElementChild;if(!last||last.classList.contains('current')||last.classList.contains('next1'))break;last.remove()}
+ while(over()&&k>.45){k-=.05;list.style.setProperty('--k',k.toFixed(2))}
 }
 /* Glisser le doigt vers le haut = note suivante, vers le bas = note précédente */
 let swY=null;
@@ -545,6 +575,7 @@ $('saveDraft').onclick=()=>{
  if(!parts.length&&!draftInk)return;
  const note={text:parts.join(' · ')};if(draftInk)note.ink=draftInk;
  S().notes.push(note);
+ if(pendingLog){pendingLog.f=note.text;pendingLog=null}lastVoice=null;
  draftParts=[];draftInk=null;$('noteText').value='';renderDraft();persist();renderNotes();renderProfileForm();
 };
 $('noteText').addEventListener('change',()=>{const v=$('noteText').value.trim();if(v)$('noteText').value=lexify(v).join(' · ')});
@@ -689,13 +720,20 @@ function recognizeInk(ink){
  if(!hwCache||hwCache.n!==data.hw.length)hwCache={n:data.hw.length,t:data.hw.map(h=>({t:h.t,c:hwCloud(h.ink)})).filter(h=>h.c)};
  const g=hwGroups(ink);if(!g.length)return null;
  const hs=g.map(x=>x.y1-x.y0).sort((a,b)=>a-b),hMed=Math.max(hs[Math.floor(hs.length/2)],40);
- let out='';
- g.forEach((x,i)=>{
-  const c=hwCloud(x.s);let best=null,bd=Infinity;
-  hwCache.t.forEach(h=>{const d=cloudMatch(c,h.c);if(d<bd){bd=d;best=h.t}});
-  if(i&&x.x0-g[i-1].x1>hMed*.45)out+=' ';
-  out+=best??'?';
+ const best=strk=>{const c=hwCloud(strk);let b=null,bd=Infinity;hwCache.t.forEach(h=>{const d=cloudMatch(c,h.c);if(d<bd){bd=d;b=h.t}});return{t:b,d:bd}};
+ /* mots = groupes séparés par un grand espace */
+ const words=[];g.forEach((x,i)=>{if(!i||x.x0-g[i-1].x1>hMed*.45)words.push([]);words[words.length-1].push(x)});
+ let out=[];
+ words.forEach(w=>{
+  const chars=w.map(x=>best(x.s));
+  let txt=chars.map(c=>c.t??'?').join('');
+  if(w.length>1){  /* un mot appris en entier (ex. « AFd », « corde ») peut battre la lecture lettre par lettre */
+   const whole=best(w.flatMap(x=>x.s)),avg=chars.reduce((a,c)=>a+c.d,0)/chars.length;
+   if(whole.t&&whole.t.length>1&&whole.d<=avg*1.15)txt=whole.t;
+  }
+  out.push(txt);
  });
+ out=out.join(' ');
  return out.trim();
 }
 /* Modèles d'écriture : apprentissage */
@@ -709,17 +747,22 @@ function renderHw(){
  $('hwList').innerHTML=cnt.size?[...cnt].map(([t,n])=>`<span class="hwChip">${esc(t)} <small>×${n}</small><button type="button" data-del-hw="${esc(t)}" aria-label="Oublier ${esc(t)}">✕</button></span>`).join(''):'<p class="muted">Aucun modèle pour l\'instant : commence par l\'entraînement guidé.</p>';
 }
 $('hwList').addEventListener('click',e=>{const b=e.target.closest('[data-del-hw]');if(!b)return;const t=b.dataset.delHw;if(confirm('Oublier tous les exemples de « '+t+' » ?')){data.hw=data.hw.filter(h=>h.t!==t);hwCache=null;persist();renderHw()}});
-function hwTrain(list,i){
+function hwTrain(list,i,names){
  if(i>=list.length){closeModal();renderHw();voiceToast('✔ Entraînement terminé. Essaie « 🔤 Convertir en texte » dans ✍ Dessin.',4000);return}
+ setTimeout(()=>{$('mTitle').innerHTML='Écris : <span style="font-size:1.6em">'+rt(list[i])+'</span> '+(names&&names[i]&&names[i].toLowerCase()!==list[i].toLowerCase()?'('+esc(names[i])+') ':'')+'<span class="muted">· '+(i+1)+' / '+list.length+'</span>'});
  openModal('Écris : « '+list[i]+' »   ('+(i+1)+' / '+list.length+')',null,null,[
   ['Arrêter','',()=>{closeModal();renderHw()}],
-  ['Passer','',()=>hwTrain(list,i+1)],
-  ['Suivant ✔','primary',()=>{if(!strokes.length)return alert('Écris « '+list[i]+' » dans le cadre.');hwSave(list[i],strokes);hwTrain(list,i+1)}]
+  ['Passer','',()=>hwTrain(list,i+1,names)],
+  ['Suivant ✔','primary',()=>{if(!strokes.length)return alert('Écris « '+list[i]+' » dans le cadre.');hwSave(list[i],strokes);hwTrain(list,i+1,names)}]
  ]);
 }
 $('hwGuided').onclick=()=>{
  const base=['0','1','2','3','4','5','6','7','8','9',P().leftLabel,P().rightLabel];
  hwTrain([...base,...base,...base],0);
+};
+$('hwAnn').onclick=()=>{
+ const a=data.annList,v=[...a.map(x=>x.v),...a.map(x=>x.v)],n=[...a.map(x=>x.l),...a.map(x=>x.l)];
+ hwTrain(v,0,n);
 };
 $('hwAddOne').onclick=()=>{
  const t=prompt('Quel caractère ou quel mot vas-tu écrire ?\n(ce qui doit apparaître en texte tapé, ex. « 4 », « corde », « P.ext. »)');
@@ -989,13 +1032,33 @@ function lexify(text){
  return parts;
 }
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-let rec=null,toastT=null;
+let rec=null,toastT=null,lastVoice=null,noPhrases=false;
+/* Choisir une autre version proposée par la dictée */
+$('voiceToast').addEventListener('click',e=>{
+ const b=e.target.closest('[data-valt]');if(!b||!lastVoice)return;
+ const p=lastVoice.alts[Number(b.dataset.valt)];if(!p)return;
+ draftParts.splice(lastVoice.start,lastVoice.len,...p);lastVoice.len=p.length;renderDraft();
+ const L=data.voiceLog[data.voiceLog.length-1];if(L)L.n=p.join(' · ');
+ voiceToast('✔ Corrigé',1500);
+});
+/* Journal de dictée : ce qui a été entendu et la note finalement validée (sert à améliorer la compréhension) */
+data.voiceLog=Array.isArray(data.voiceLog)?data.voiceLog:[];
+let pendingLog=null;
+function logVoice(all,parsed){
+ pendingLog={d:new Date().toISOString().slice(0,16),h:all.map(a=>a.t),n:parsed};
+ data.voiceLog.push(pendingLog);if(data.voiceLog.length>150)data.voiceLog.splice(0,data.voiceLog.length-150);persist();
+}
 function voiceToast(msg,ms){const t=$('voiceToast');t.innerHTML=msg;t.classList.remove('hidden');clearTimeout(toastT);if(ms)toastT=setTimeout(()=>t.classList.add('hidden'),ms)}
 function micState(on){$('micBtn').classList.toggle('on',on);$('micBtn').textContent=on?'● Écoute…':'🎤 Dicter'}
 $('micBtn').onclick=()=>{
  if(!SR)return alert('La dictée n\'est pas disponible dans ce navigateur. Ouvre RALLYE NOTE avec Chrome, ou utilise le micro du clavier dans le champ Commentaire.');
  if(rec){rec.stop();return}
  rec=new SR();rec.lang='fr-FR';rec.interimResults=true;rec.continuous=false;rec.maxAlternatives=5;
+ /* Chrome récent : on lui donne le vocabulaire du carnet pour qu'il l'entende mieux (ignoré si non pris en charge) */
+ try{if(!noPhrases&&window.SpeechRecognitionPhrase&&'phrases' in rec){
+  const w=new Set(['gauche','droite','pour','sur','à fond','corde','frein',...P().distances.map(String),...P().grades.map(String),...data.annList.map(a=>a.l),...data.voiceWords.map(x=>x.s),...Object.values(VOICE_ALIAS).flat().filter(x=>x.length>3)]);
+  rec.phrases=[...w].filter(Boolean).slice(0,100).map(x=>new SpeechRecognitionPhrase(x,3));
+ }}catch(err){}
  let done=false;
  rec.onstart=()=>{micState(true);voiceToast('🎤 Je t\'écoute…')};
  rec.onresult=e=>{
@@ -1003,19 +1066,29 @@ $('micBtn').onclick=()=>{
   if(!r.isFinal){voiceToast('🎤 '+esc(r[0].transcript));return}
   done=true;
   /* garde la version qui colle le mieux au lexique */
-  let best=null,bestT='';
-  for(let k=0;k<r.length;k++){const t=r[k].transcript,res=parseVoice(t);res.score=res.known*10-res.freeWords-k*0.1;if(!best||res.score>best.score){best=res;bestT=t}}
-  if(!best.parts.length){voiceToast('Pas compris, réessaie.',2500);return}
+  const all=[];
+  for(let k=0;k<r.length;k++){const t=r[k].transcript,res=parseVoice(t);res.score=res.known*10-res.freeWords-k*0.1;res.t=t;all.push(res)}
+  all.sort((a,b)=>b.score-a.score);
+  const best=all[0];
+  if(!best||!best.parts.length){voiceToast('Pas compris, réessaie.',2500);logVoice(all,'');return}
+  const start=draftParts.length;
   best.parts.forEach(v=>draftParts.push(v));renderDraft();
-  voiceToast('Entendu : « '+esc(bestT)+' »'+(best.save?' ✔ note validée':'<br><small>Pas bon ? Touche la note pour la corriger.</small>'),best.save?2500:4000);
-  if(best.save)$('saveDraft').click();
+  logVoice(all,best.parts.join(' · '));
+  /* autres façons dont la dictée a pu comprendre : un bouton pour chacune */
+  const seen=new Set([best.parts.join(' · ')]),alts=[];
+  all.slice(1).forEach(a=>{const j=a.parts.join(' · ');if(j&&!seen.has(j)){seen.add(j);alts.push(a.parts)}});
+  lastVoice={start,len:best.parts.length,alts};
+  if(best.save){voiceToast('Entendu : « '+esc(best.t)+' » ✔ note validée',2500);$('saveDraft').click();return}
+  voiceToast('Entendu : « '+esc(best.t)+' »'+(alts.length?'<br><small>Pas ça ? Touche la bonne version :</small><div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:6px">'+alts.slice(0,3).map((p,i)=>`<button type="button" data-valt="${i}" style="padding:8px 12px">${rt(p.join(' · '))}</button>`).join('')+'</div>':'<br><small>Pas bon ? Touche la note pour la corriger.</small>'),alts.length?8000:4000);
  };
  rec.onerror=e=>{
   const m={'not-allowed':'Le micro est bloqué. Autorise le micro pour RALLYE NOTE dans les paramètres du site (Chrome).',
    'service-not-allowed':'Le micro est bloqué. Autorise le micro pour RALLYE NOTE dans les paramètres du site (Chrome).',
    'network':'Pas de réseau : sur cette tablette la dictée de l\'appli a besoin d\'internet. Utilise le micro du clavier dans le champ Commentaire.',
    'audio-capture':'Aucun micro trouvé. Vérifie que le casque est bien connecté.',
+   'phrases-not-supported':'(réessaie : réglage de la dictée ajusté)',
    'language-not-supported':'Le français n\'est pas disponible pour la dictée sur cette tablette.'}[e.error];
+  if(e.error==='phrases-not-supported')noPhrases=true;
   if(m){done=true;voiceToast(m,6000)}
  };
  rec.onend=()=>{rec=null;micState(false);if(!done)voiceToast('Rien entendu.',2000)};
@@ -1033,6 +1106,13 @@ $('vwAdd').onclick=()=>{
  $('vwSaid').value='';$('vwWrite').value='';persist();renderVoiceWords();
 };
 $('vwList').addEventListener('click',e=>{const b=e.target.closest('[data-del-vw]');if(!b)return;data.voiceWords.splice(Number(b.dataset.delVw),1);persist();renderVoiceWords()});
+
+$('vlShare').onclick=async()=>{
+ const L=data.voiceLog;if(!L.length)return alert('Le journal est vide : dicte d\'abord quelques notes avec 🎤 Dicter.');
+ const text='RALLYE NOTE — journal de dictée ('+P().name+')\n'+L.map(x=>`${x.d}\n  entendu : ${x.h.map(h=>'« '+h+' »').join(' | ')}\n  compris : ${plain(x.n||'—')}\n  note validée : ${x.f?plain(x.f):'—'}`).join('\n');
+ try{if(navigator.share)return await navigator.share({title:'Journal de dictée',text})}catch(e){if(e&&e.name==='AbortError')return}
+ try{await navigator.clipboard.writeText(text);alert('Journal copié : colle-le dans un message.')}catch(e){prompt('Copie ce journal :',text)}
+};
 
 /* ---- Sauvegarde ---- */
 $('exportBtn').onclick=()=>{

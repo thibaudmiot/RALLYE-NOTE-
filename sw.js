@@ -2,7 +2,7 @@
    L'application s'ouvre toujours depuis la mémoire de la tablette ;
    quand il y a du réseau, elle vérifie en arrière-plan s'il existe une nouvelle version
    (prise en compte à l'ouverture suivante). */
-const CACHE = 'rallye-note-v10';
+const CACHE = 'rallye-note-v11';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png'];
 
 self.addEventListener('install', e => {
