@@ -383,7 +383,7 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
 </div></div>
 <script>
 const $=id=>document.getElementById(id);
-const APP_VERSION='v13';  /* à changer en même temps que CACHE dans sw.js */
+const APP_VERSION='v14';  /* à changer en même temps que CACHE dans sw.js */
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 /* Symboles dessinés (comme dans le carnet). Dans une note, ils s'écrivent ⟦nom⟧. */
 const SYM={
@@ -502,11 +502,11 @@ $('allClose').onclick=()=>$('allModal').classList.add('hidden');
 function fitRecent(){const b=$('recentNotes');if(!b.offsetParent)return;while(b.children.length>1&&b.scrollHeight>b.clientHeight+1)b.firstElementChild.remove()}
 window.addEventListener('resize',()=>{renderNotes();renderReader()});
 const PREV=3,NEXT=5; /* notes passées / à venir affichées en spéciale */
-/* En spéciale, chaque « Pour » (↳) commence une nouvelle ligne, en retrait (comme dans le carnet) */
+/* En spéciale, chaque « Pour » (↳) et chaque « Sur » (/) commence une nouvelle ligne, en retrait (comme dans le carnet) */
 function noteLines(t){
- const L=String(t).split(/\s*(?:·\s*)?(?=↳)/).map(l=>l.replace(/^\s*·\s*|\s*·\s*$/g,'').replace(/^↳\s*·\s*/,'↳ ').trim()).filter(Boolean);
+ const L=String(t).split(/\s*(?:·\s*)?(?=↳|(?<![\/\S])\/(?![\/\S]))/).map(l=>l.replace(/^\s*·\s*|\s*·\s*$/g,'').replace(/^(↳|\/)\s*·\s*/,'$1 ').trim()).filter(Boolean);
  if(L.length<2)return `<span>${rt(t)}</span>`;
- return '<span class="nlines">'+L.map(l=>`<span class="nl${l.startsWith('↳')?' pour':''}">${rt(l)}</span>`).join('')+'</span>';
+ return '<span class="nlines">'+L.map(l=>`<span class="nl${/^(↳|\/(?!\/))/.test(l)?' pour':''}">${rt(l)}</span>`).join('')+'</span>';
 }
 function noteRow(x,i,cls){return `<div class="note ${cls}" data-goto="${i}"><span class="ntxt">${noteLines(x.text)}${inkSvg(x.ink)}${x.mark?'<span class="flag">⚑ '+esc(x.mark)+'</span>':''}</span><span style="display:flex;gap:6px;align-items:center;flex-shrink:0"><small>${i+1}</small><button type="button" class="edit" data-edit-note="${i}" aria-label="Modifier la note ${i+1}">✎</button></span></div>`}
 function renderReader(){
