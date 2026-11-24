@@ -722,11 +722,17 @@ const VOICE_ALIAS={
  'Changement':['changement de direction'],
  'Départ':['depart']
 };
-const SIDE={gauche:'G',gauches:'G',droite:'D',droites:'D',droit:'D',droits:'D'};
+const SIDE={gauche:'G',gauches:'G',goche:'G',gauch:'G',droite:'D',droites:'D',droit:'D',droits:'D',droitte:'D',adroite:'D',adroit:'D'};
+let lexStrict=false;   /* vrai pendant la traduction du texte tapé : on n'y devine pas les mots mal entendus */
+/* Mots que la dictée entend parfois à la place de gauche / droite : comptés comme un sens SEULEMENT s'ils sont suivis d'un chiffre */
+const SIDE_WEAK={go:'G',gosh:'G',goch:'G',gaucher:'G',gauchet:'G',goshe:'G',gauge:'G',gauches:'G',endroit:'D',endroits:'D',doigt:'D',doigts:'D',droites:'D',troite:'D',droie:'D',drouate:'D',droip:'D',adroit:'D'};
+/* Chiffres de virage souvent mal entendus juste après gauche / droite */
+const GRADE_WEAK={deu:2,toi:3,troie:3,trois:3,cat:4,quatres:4,catre:4,katr:4,saint:5,sein:5,sain:5,sinq:5,cinque:5,sis:6,cis:6,scie:6,six:6,cette:7,set:7,sept:7};
 /* Sens à la position i : « gauche », « à gauche », « au droit »… ou une lettre g/d collée à un nombre (« G4 ») */
 function sideAt(tok,i){
- let j=i;if((tok[j]==='a'||tok[j]==='au')&&SIDE[tok[j+1]])j++;
+ let j=i;if((tok[j]==='a'||tok[j]==='au'||tok[j]==='la')&&(SIDE[tok[j+1]]||SIDE_WEAK[tok[j+1]]))j++;
  if(SIDE[tok[j]])return{side:SIDE[tok[j]],len:j-i+1};
+ if(SIDE_WEAK[tok[j]]&&(readNum(tok,j+1)||(!lexStrict&&GRADE_WEAK[tok[j+1]])))return{side:SIDE_WEAK[tok[j]],len:j-i+1};
  if((tok[i]==='g'||tok[i]==='d')&&readNum(tok,i+1))return{side:tok[i].toUpperCase(),len:1};
  return null;
 }
@@ -742,7 +748,7 @@ function readNum(tok,i){
   if(w==='quatre'&&/^vingts?$/.test(tok[j+1]||'')){cur+=80;j+=2;any=true;continue}
   if(w==='et'&&any&&(tok[j+1]==='un'||tok[j+1]==='onze')){j++;continue}
   if(w in NUMW){cur+=NUMW[w];j++;any=true;continue}
-  if(w==='cent'||w==='cents'){cur=(cur||1)*100;j++;any=true;continue}
+  if(w==='cent'||w==='cents'||((w==='sans'||w==='sang'||w==='san')&&(/^\d+$/.test(tok[j+1]||'')||(tok[j+1] in NUMW)))){cur=(cur||1)*100;j++;any=true;continue}
   if(w==='mille'){total+=(cur||1)*1000;cur=0;j++;any=true;continue}
   break;
  }
@@ -765,6 +771,8 @@ function gradeAt(tok,i){
  const r=readNum(tok,i);
  if(r){const g=p.grades.find(g=>vNorm(g)===String(r.n))||String(r.n);return{g,len:r.len}}
  for(const g of p.grades){const k=vNorm(g).split(' ');if(k[0]&&k.every((w,x)=>tok[i+x]===w))return{g,len:k.length}}
+ const w=lexStrict?null:GRADE_WEAK[tok[i]];   /* « droite cat » → D4, « gauche de » → G2 */
+ if(w!=null){const g=p.grades.find(g=>vNorm(g)===String(w))||String(w);return{g,len:1}}
  return null;
 }
 /* Reconnaît un élément du lexique à la position i → {v,len} ou null */
@@ -792,8 +800,8 @@ function matchAt(tok,i,dict,p,strict){
 function parseVoice(text){
  const raw=String(text).toLowerCase().replace(/œ/g,'oe').replace(/æ/g,'ae').replace(/(\d)(\p{L})/gu,'$1 $2').replace(/(\p{L})(\d)/gu,'$1 $2').split(/[^\p{L}\d]+/u).map(w=>[w,vNorm(w)]).filter(([w,n])=>n&&!FILLER.has(n));
  const tok=raw.map(x=>x[1]),orig=raw.map(x=>x[0]);
- const dict=voiceDict(),p=P(),parts=[];let known=0,free=[],save=false;
- const flush=()=>{if(free.length){parts.push(free.join(' '));free=[]}};
+ const dict=voiceDict(),p=P(),parts=[];let known=0,free=[],save=false,freeWords=0;
+ const flush=()=>{if(free.length){freeWords+=free.length;parts.push(free.join(' '));free=[]}};
  const push=v=>{flush();parts.push(v);known++};
  if(/^valid/.test(tok[tok.length-1]||'')){save=true;tok.pop();orig.pop()}
  for(let i=0;i<tok.length;){
@@ -801,7 +809,7 @@ function parseVoice(text){
   if(hit){push(hit.v);i+=hit.len}else{free.push(orig[i]);i++}
  }
  flush();
- return{parts,known,save};
+ return{parts,known,save,freeWords};
 }
 /* Même traduction pour du texte tapé ou dicté au clavier (champ Commentaire, modification d'une note).
    Ce qui est déjà au format de l'appli (D4, P.ext., ⟦maison⟧, /, ↳…) reste tel quel. */
@@ -809,10 +817,12 @@ const LEX_SKIP=new Set(['te','the','tee','tare','kit','quitte','quittez','finish
 function lexify(text){
  const dict=voiceDict(),p=P(),parts=[];
  LEX_SKIP.forEach(k=>dict.delete(k));
+ lexStrict=true;try{
  String(text).split('·').forEach(seg=>{
   const chunks=seg.trim().split(/\s+/).filter(Boolean),W=[];
   chunks.forEach((ch,c)=>{
-   const core=ch.replace(/[,;:!?]+$/,'');
+   let core=ch.replace(/^["«“(]+/,'').replace(/[,;:!?»”")]+$/,'');
+   if(/^[\p{L}\d'’-]+\.+$/u.test(core))core=core.replace(/\.+$/,'');   /* point final ajouté par la dictée du clavier */
    const subs=core.split(/[-'’]/).filter(Boolean);
    if(!subs.length||/[^\p{L}\d'’-]/u.test(core)||subs.some(x=>/\p{L}/u.test(x)&&/\d/.test(x)))W.push({n:'\u0000',o:ch,c});
    else subs.forEach(x=>W.push({n:vNorm(x.replace(/œ/g,'oe').replace(/æ/g,'ae'))||'\u0000',o:x,c}));
@@ -832,6 +842,7 @@ function lexify(text){
   }
   flush();
  });
+ }finally{lexStrict=false}
  return parts;
 }
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
@@ -850,7 +861,7 @@ $('micBtn').onclick=()=>{
   done=true;
   /* garde la version qui colle le mieux au lexique */
   let best=null,bestT='';
-  for(let k=0;k<r.length;k++){const t=r[k].transcript,res=parseVoice(t);if(!best||res.known>best.known){best=res;bestT=t}}
+  for(let k=0;k<r.length;k++){const t=r[k].transcript,res=parseVoice(t);res.score=res.known*10-res.freeWords-k*0.1;if(!best||res.score>best.score){best=res;bestT=t}}
   if(!best.parts.length){voiceToast('Pas compris, réessaie.',2500);return}
   best.parts.forEach(v=>draftParts.push(v));renderDraft();
   voiceToast('Entendu : « '+esc(bestT)+' »'+(best.save?' ✔ note validée':'<br><small>Pas bon ? Touche la note pour la corriger.</small>'),best.save?2500:4000);
@@ -917,7 +928,12 @@ document.addEventListener('click',keepAwake,{once:true});
 try{if(navigator.storage&&navigator.storage.persist)navigator.storage.persist()}catch(e){}
 
 /* Application installable : fonctionne hors connexion une fois installée */
-if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+if('serviceWorker' in navigator&&location.protocol.startsWith('http')){
+ const hadSW=!!navigator.serviceWorker.controller;
+ navigator.serviceWorker.register('sw.js').catch(()=>{});
+ /* Nouvelle version téléchargée : on prévient (les notes ne sont pas touchées) */
+ navigator.serviceWorker.addEventListener('controllerchange',()=>{if(hadSW)voiceToast('🔄 Nouvelle version de RALLYE NOTE installée.<br><button type="button" onclick="location.reload()">Recharger maintenant</button>')});
+}
 
 persist();renderAll();renderDraft();updateTimer();updateKm();keepAwake();
 </script>
