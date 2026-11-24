@@ -67,10 +67,11 @@ label{display:block;font-size:12px;color:var(--muted);font-weight:700;margin:8px
 #annotationKeys small{font-size:.78em;font-weight:700;opacity:.95;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
 svg.sy{height:1em;width:auto;vertical-align:-.13em;overflow:visible}
 #annotationKeys .sym svg.sy{height:1.35em}
-.annRow{display:grid;grid-template-columns:44px 70px 1fr auto auto auto;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid #334155}
+.annRow{display:grid;grid-template-columns:44px minmax(70px,max-content) 1fr auto auto auto auto;gap:6px;align-items:center;padding:5px 0;border-bottom:1px solid #334155}
 .annRow .prev{font-size:24px;font-weight:900;text-align:center;background:#0f1a2b;border-radius:8px;padding:4px}
 .annRow button{padding:8px 11px;font-size:15px}
 .annRow .del{background:#7f1d1d}
+.annRow .annCol{width:auto;padding:8px 6px;font-size:14px;font-weight:700;color:#fff}
 .annRow .handle{font-size:24px;text-align:center;color:var(--muted);cursor:grab;touch-action:none;padding:8px 0;user-select:none}
 .annRow.dragging{background:#1d3350;outline:2px solid var(--accent);border-radius:8px}
 #annotationKeys button{min-height:43px;padding:5px 3px;font-size:14px;border-radius:8px}
@@ -322,7 +323,7 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
  </div>
  <div class="panel">
   <h2>Annotations (communes à tous les pilotes)</h2>
-  <p class="hint">Fais glisser ☰ pour placer les boutons dans l'ordre que tu veux (ou ▲ ▼). ✕ pour supprimer.</p>
+  <p class="hint">Fais glisser ☰ pour placer les boutons dans l'ordre que tu veux (ou ▲ ▼). Choisis la couleur de chaque bouton dans sa liste. ✕ pour supprimer.</p>
   <div id="annList" style="margin-top:6px"></div>
   <label for="annName">Nouvelle annotation : nom du bouton</label><input id="annName" placeholder="ex. Piège">
   <label for="annValue">Ce qui s'écrit dans la note</label>
@@ -381,7 +382,7 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
 </div></div>
 <script>
 const $=id=>document.getElementById(id);
-const APP_VERSION='v11';  /* à changer en même temps que CACHE dans sw.js */
+const APP_VERSION='v12';  /* à changer en même temps que CACHE dans sw.js */
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 /* Symboles dessinés (comme dans le carnet). Dans une note, ils s'écrivent ⟦nom⟧. */
 const SYM={
@@ -459,6 +460,12 @@ const FAM={
  route:['Y','T','⟦carrefour⟧','⟦poteau⟧','⟦maison⟧','AR','Départ','F.Finish']              /* repères : violet */
 };
 const famOf=v=>Object.keys(FAM).find(k=>FAM[k].includes(v))||'perso';
+/* Couleurs au choix pour chaque annotation : [nom, fond du bouton, liseré] */
+const COLORS={rouge:['Rouge','#4a1d24','#ef4444'],orange:['Orange','#4a2a12','#f97316'],jaune:['Jaune','#3f3413','#f5b82e'],vert:['Vert','#173a2a','#22c55e'],
+ bleu:['Bleu','#17324f','#38bdf8'],violet:['Violet','#2e2350','#a78bfa'],rose:['Rose','#4a1d3a','#f472b6'],gris:['Sans couleur','#223149','#223149']};
+const FAMCOL={vit:'rouge',traj:'bleu',dang:'jaune',lien:'vert',route:'violet',perso:'gris'};
+const annColor=a=>COLORS[a.c]?a.c:FAMCOL[famOf(a.v)];
+const colStyle=k=>`background:${COLORS[k][1]};border-left-color:${COLORS[k][2]}`;
 function renderKeys(){
  const p=P();
  $('distanceKeys').innerHTML=p.distances.map(d=>`<button type="button" data-distance="${esc(d)}">${esc(d)}</button>`).join('');
@@ -467,7 +474,7 @@ function renderKeys(){
  $('gradeKeys').style.gridTemplateColumns=`repeat(${Math.max(1,Math.min(p.grades.length,8))},minmax(0,1fr))`;
  $('leftSelect').textContent=p.leftLabel;$('rightSelect').textContent=p.rightLabel;
  $('leftSelect').classList.toggle('long',p.leftLabel.length>2);$('rightSelect').classList.toggle('long',p.rightLabel.length>2);
- $('annotationKeys').innerHTML=data.annList.map((a,i)=>`<button type="button" class="fam-${famOf(a.v)}" data-ann-i="${i}" aria-label="${esc(a.l)}"><span class="sym">${rt(a.v)}</span>${a.l.toLowerCase()!==a.v.toLowerCase()?'<small>'+esc(a.l)+'</small>':''}</button>`).join('')
+ $('annotationKeys').innerHTML=data.annList.map((a,i)=>`<button type="button" style="${colStyle(annColor(a))}" data-ann-i="${i}" aria-label="${esc(a.l)}"><span class="sym">${rt(a.v)}</span>${a.l.toLowerCase()!==a.v.toLowerCase()?'<small>'+esc(a.l)+'</small>':''}</button>`).join('')
   +'<button type="button" id="newAnnotation">＋ Perso</button>';
  chooseSide(selectedSide);
 }
@@ -538,7 +545,7 @@ function renderProfileForm(){
  $('pName').value=p.name;$('pLeft').value=p.leftLabel;$('pRight').value=p.rightLabel;$('pFormat').value=p.format;
  $('pGrades').value=p.grades.join(', ');$('pDist').value=p.distances.join(', ');
  $('stageInfo').textContent=`${p.name} a ${p.stages.length} spéciale(s). Spéciale affichée : ${S().name} (${S().notes.length} notes).`;
- $('annList').innerHTML=data.annList.map((a,i)=>`<div class="annRow" data-row="${i}"><span class="handle" aria-label="Déplacer">☰</span><span class="prev">${rt(a.v)}</span><span>${esc(a.l)}</span><button type="button" data-ann-up="${i}" aria-label="Monter">▲</button><button type="button" data-ann-down="${i}" aria-label="Descendre">▼</button><button type="button" class="del" data-del-ann="${i}" aria-label="Supprimer">✕</button></div>`).join('')||'<p class="muted">Aucune annotation.</p>';
+ $('annList').innerHTML=data.annList.map((a,i)=>`<div class="annRow" data-row="${i}"><span class="handle" aria-label="Déplacer">☰</span><span class="prev">${rt(a.v)}</span><span>${esc(a.l)}</span><select class="annCol" data-ann-col="${i}" aria-label="Couleur de ${esc(a.l)}" style="${colStyle(annColor(a))};border-left:6px solid ${COLORS[annColor(a)][2]}">${Object.keys(COLORS).map(k=>`<option value="${k}"${k===annColor(a)?' selected':''}>${COLORS[k][0]}</option>`).join('')}</select><button type="button" data-ann-up="${i}" aria-label="Monter">▲</button><button type="button" data-ann-down="${i}" aria-label="Descendre">▼</button><button type="button" class="del" data-del-ann="${i}" aria-label="Supprimer">✕</button></div>`).join('')||'<p class="muted">Aucune annotation.</p>';
 }
 function renderAll(){fix();renderSelects();renderKeys();renderNotes();renderProfileForm();renderVoiceWords();renderHw();updateSplitInfo()}
 
@@ -865,6 +872,8 @@ $('annAdd').onclick=()=>{
  if(!l)return alert('Donne un nom au bouton.');
  if(addAnnotation(l,v)){$('annName').value='';$('annValue').value='';$('annSym').value=''}else alert('Cette annotation existe déjà.');
 };
+/* Couleur choisie pour une annotation */
+$('annList').addEventListener('change',e=>{const sel=e.target.closest('[data-ann-col]');if(!sel)return;const a=data.annList[Number(sel.dataset.annCol)];if(!a)return;a.c=sel.value;persist();renderKeys();renderProfileForm()});
 /* Glisser-déposer des annotations avec la poignée ☰ */
 let dragI=null;
 $('annList').addEventListener('pointerdown',e=>{
