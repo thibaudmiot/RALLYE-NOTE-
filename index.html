@@ -383,7 +383,7 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
 </div></div>
 <script>
 const $=id=>document.getElementById(id);
-const APP_VERSION='v18';  /* changer ce numéro suffit : la copie hors connexion (sw.js) suit toute seule */
+const APP_VERSION='v19';  /* changer ce numéro suffit : la copie hors connexion (sw.js) suit toute seule */
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 /* Symboles dessinés (comme dans le carnet). Dans une note, ils s'écrivent ⟦nom⟧. */
 const SYM={
@@ -925,7 +925,8 @@ const VOICE_ALIAS={
 };
 /* Mots reconnus à la dictée même sans bouton d'annotation (texte écrit → ce que la dictée peut entendre) */
 const VOICE_BUILTIN={
- 'Gué':['gue','gues','gay','gai','guet','guets','ghe']
+ 'Gué':['gue','gues','gay','gai','guet','guets','ghe'],
+ 'Lg':['long','longue','longs','longues','lon']
 };
 const SIDE={gauche:'G',gauches:'G',goche:'G',gauch:'G',droite:'D',droites:'D',droit:'D',droits:'D',droitte:'D',adroite:'D',adroit:'D'};
 let lexStrict=false;   /* vrai pendant la traduction du texte tapé : on n'y devine pas les mots mal entendus */
@@ -1024,7 +1025,7 @@ function parseVoice(text){
 }
 /* Même traduction pour du texte tapé ou dicté au clavier (champ Commentaire, modification d'une note).
    Ce qui est déjà au format de l'appli (D4, P.ext., ⟦maison⟧, /, ↳…) reste tel quel. */
-const LEX_SKIP=new Set(['te','the','tee','tare','kit','quitte','quittez','finish','gay','gai','guet','guets','et 3','et trois','et troie','e 3','e trois','et toi','etroi','etrois']); /* mots courants : seulement au micro de l'appli */
+const LEX_SKIP=new Set(['te','the','tee','tare','kit','quitte','quittez','finish','gay','gai','guet','guets','et 3','et trois','et troie','e 3','e trois','et toi','etroi','etrois','long','longue','longs','longues','lon']); /* mots courants : seulement au micro de l'appli */
 function lexify(text){
  const dict=voiceDict(),p=P(),parts=[];
  LEX_SKIP.forEach(k=>dict.delete(k));
