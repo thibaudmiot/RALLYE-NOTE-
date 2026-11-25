@@ -383,7 +383,7 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
 </div></div>
 <script>
 const $=id=>document.getElementById(id);
-const APP_VERSION='v19';  /* changer ce numéro suffit : la copie hors connexion (sw.js) suit toute seule */
+const APP_VERSION='v20';  /* changer ce numéro suffit : la copie hors connexion (sw.js) suit toute seule */
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 /* Symboles dessinés (comme dans le carnet). Dans une note, ils s'écrivent ⟦nom⟧. */
 const SYM={
@@ -904,7 +904,7 @@ data.voiceWords=Array.isArray(data.voiceWords)?data.voiceWords:[];
 function vNorm(t){return String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/(\d)([a-z])/g,'$1 $2').replace(/([a-z])(\d)/g,'$1 $2').replace(/[^a-z0-9]+/g,' ').trim()}
 /* Façons dont la dictée entend souvent les annotations de base (nom du bouton → ce qu'on peut dire) */
 const VOICE_ALIAS={
- 'Pas extérieur':['pexte','pext','pextes','p ext','pe ext','pe exte','pas ext','pas exterieur'],
+ 'Pas extérieur':['pexte','pext','pextes','p ext','pe ext','pe exte','pas ext','pas exterieur','pex','pexe','pexes','pecs','pec','bex','pax','texte','textes','text','tex','teste','p x','pe x'],
  'Y':['i grec','igrec','y grec'],
  'T':['te','the','tee'],
  'Quitter':['quitte','quittez','qit','kit'],
@@ -1025,7 +1025,7 @@ function parseVoice(text){
 }
 /* Même traduction pour du texte tapé ou dicté au clavier (champ Commentaire, modification d'une note).
    Ce qui est déjà au format de l'appli (D4, P.ext., ⟦maison⟧, /, ↳…) reste tel quel. */
-const LEX_SKIP=new Set(['te','the','tee','tare','kit','quitte','quittez','finish','gay','gai','guet','guets','et 3','et trois','et troie','e 3','e trois','et toi','etroi','etrois','long','longue','longs','longues','lon']); /* mots courants : seulement au micro de l'appli */
+const LEX_SKIP=new Set(['te','the','tee','tare','kit','quitte','quittez','finish','gay','gai','guet','guets','et 3','et trois','et troie','e 3','e trois','et toi','etroi','etrois','long','longue','longs','longues','lon','texte','textes','text','tex','teste','pax','pec','pecs']); /* mots courants : seulement au micro de l'appli */
 function lexify(text){
  const dict=voiceDict(),p=P(),parts=[];
  LEX_SKIP.forEach(k=>dict.delete(k));
