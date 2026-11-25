@@ -383,7 +383,7 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
 </div></div>
 <script>
 const $=id=>document.getElementById(id);
-const APP_VERSION='v16';  /* changer ce numéro suffit : la copie hors connexion (sw.js) suit toute seule */
+const APP_VERSION='v17';  /* changer ce numéro suffit : la copie hors connexion (sw.js) suit toute seule */
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 /* Symboles dessinés (comme dans le carnet). Dans une note, ils s'écrivent ⟦nom⟧. */
 const SYM={
@@ -914,6 +914,8 @@ const VOICE_ALIAS={
  'En frein':['en frein','en freins'],
  'Frein':['freins'],
  'Corde':['cordes'],
+ 'Sommet':['sommets'],
+ 'Cuvette':['cuvettes'],
  'Pas corde':['pas cordes','pas de corde'],
  'Arrière':['arriere','en arriere'],
  'Étroit':['etroit','etroite'],
@@ -963,12 +965,15 @@ function readNum(tok,i){
 function voiceDict(){
  const d=new Map(),put=(said,v)=>{const k=vNorm(said);if(k&&!d.has(k))d.set(k,v)};
  data.voiceWords.forEach(w=>put(w.s,w.v));                    /* mots perso d'abord */
- Object.entries(VOICE_BUILTIN).forEach(([v,l])=>l.forEach(x=>put(x,v)));
  data.annList.forEach(a=>{
   if(vNorm(a.l).length>1)put(a.l,a.v);                         /* nom du bouton */
   (VOICE_ALIAS[a.l]||[]).forEach(x=>put(x,a.v));
   if(!/⟦/.test(a.v)&&vNorm(a.v).length>2)put(a.v,a.v);          /* ex. « Chicane », « Jet » */
  });
+ /* mots intégrés (gué…) : reprennent le bouton s'il existe (ex. « Gué 💧 ») */
+ Object.entries(VOICE_BUILTIN).forEach(([v,l])=>{const b=d.get(vNorm(v))||v;l.forEach(x=>put(x,b))});
+ /* « gauche » / « droite » dictés = toujours le sens du pilote (G / D + degré), même s'il existe un bouton Gauche / Droite */
+ Object.keys(SIDE).forEach(k=>d.delete(k));
  return d;
 }
 function sameNum(a,n){const m=vNorm(a).match(/^(\d+)/);return m&&Number(m[1])===n}
