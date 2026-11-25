@@ -383,7 +383,7 @@ svg.ink{height:1.5em;width:auto;max-width:100%;vertical-align:middle;flex:none}
 </div></div>
 <script>
 const $=id=>document.getElementById(id);
-const APP_VERSION='v15';  /* changer ce numéro suffit : la copie hors connexion (sw.js) suit toute seule */
+const APP_VERSION='v16';  /* changer ce numéro suffit : la copie hors connexion (sw.js) suit toute seule */
 const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 /* Symboles dessinés (comme dans le carnet). Dans une note, ils s'écrivent ⟦nom⟧. */
 const SYM={
@@ -413,6 +413,7 @@ function cleanProfile(p){
  const q=newProfile(String(p&&p.name||'Pilote'));
  ['leftLabel','rightLabel','format'].forEach(k=>{if(typeof p[k]==='string'&&p[k])q[k]=p[k]});
  ['grades','distances'].forEach(k=>{if(Array.isArray(p[k])&&p[k].length)q[k]=p[k].map(String)});
+ if(/^gauche$/i.test(q.leftLabel.trim()))q.leftLabel='G';if(/^droite$/i.test(q.rightLabel.trim()))q.rightLabel='D';   /* vieilles sauvegardes */
  if(Array.isArray(p.stages)&&p.stages.length)q.stages=p.stages.map(s=>({name:String(s&&s.name||'Spéciale'),notes:Array.isArray(s&&s.notes)?s.notes.filter(n=>n&&(n.text||Array.isArray(n.ink))).map(n=>{const o={text:String(n.text||'')};if(n.mark)o.mark=String(n.mark);if(Array.isArray(n.ink))o.ink=n.ink;return o}):[],prevSplit:Number(s&&s.prevSplit)||0,pos:0}));
  return q;
 }
@@ -433,6 +434,8 @@ delete data.annotations;
 /* Symboles ajoutés après coup : proposés une seule fois (pas remis si on les supprime) */
 data.symAdded=Array.isArray(data.symAdded)?data.symAdded:[];
 ['changement'].forEach(k=>{if(data.symAdded.includes(k))return;data.symAdded.push(k);const v='⟦'+k+'⟧';if(!data.annList.some(x=>x.v===v))data.annList.push({l:SYM[k][0],v})});
+/* v16 : « Gauche » / « Droite » écrits en toutes lettres dans un profil → G / D (une seule fois) */
+if(!data.lblGD){data.lblGD=1;(data.profiles||[]).forEach(p=>{if(/^gauche$/i.test(String(p.leftLabel||'').trim()))p.leftLabel='G';if(/^droite$/i.test(String(p.rightLabel||'').trim()))p.rightLabel='D'})}
 const P=()=>data.profiles[data.curProfile];
 const S=()=>P().stages[P().cur];
 function fix(){
